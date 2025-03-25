@@ -69,7 +69,7 @@
     <!-- Hero Section -->
     <section id="hero" class="container mx-auto px-6 pt-32 pb-20 text-center">
       <div class="max-w-4xl mx-auto">
-        <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight animate-fadeInUp">
+        <h1 class="text-5xl md:text-6xl font-semibold mb-6 leading-tight animate-fadeInUp">
           Connect Beyond Boundaries with
           <span class="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">ChatterBox</span>
         </h1>
