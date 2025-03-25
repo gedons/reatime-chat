@@ -279,7 +279,7 @@
           <!-- Footer columns content -->
         </div>
         <div class="border-t border-gray-800 mt-12 pt-8 text-center">
-          <p>&copy; 2025 ChatApp. All rights reserved.</p>
+          <p>&copy; 2025 ChatterBox. All rights reserved.</p>
         </div>
       </div>
     </footer>
