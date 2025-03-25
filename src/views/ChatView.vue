@@ -74,7 +74,7 @@
                 }}
               </p>
               <p class="text-[10px] md:text-xs text-gray-400">
-                {{ chat.lastMessage }}
+                <!-- {{ chat.lastMessage }} -->
               </p>
             </div>
           </div>
