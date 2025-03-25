@@ -301,7 +301,7 @@ export default {
       this.isMenuOpen = false;
       const section = document.getElementById(sectionId);
       if (section) {
-        const offset = 80; // Adjust for fixed header height
+        const offset = 80; 
         const sectionTop = section.getBoundingClientRect().top + window.pageYOffset - offset;
         
         window.scrollTo({
