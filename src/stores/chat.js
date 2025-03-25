@@ -61,11 +61,9 @@ export const useChatStore = defineStore('chat', {
 
     async fetchUserChats() {
       this.loading = true;
-      this.setAuthHeader();
-      // console.log('[fetchUserChats] Fetching user chats...');
+      this.setAuthHeader();      
       try {
-        const response = await axios.get(`${url}`);
-        // console.log('[fetchUserChats] Chats fetched:', response.data);
+        const response = await axios.get(`${url}`);        
         this.chats = response.data;
       } catch (error) {
         console.log('[fetchUserChats] Error:', error.response?.data?.message);
@@ -74,7 +72,7 @@ export const useChatStore = defineStore('chat', {
         this.loading = false;
       }
     },
-
+    
     async fetchPendingChats() {
       this.loading = true;
       this.setAuthHeader();
@@ -169,68 +167,68 @@ export const useChatStore = defineStore('chat', {
     async selectChat(chat) {
       this.loading = true;
       this.selectedChat = chat;
-      try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(`${messageurl}/${chat._id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        // console.log('[selectChat] Fetched messages:', response.data);
-    
-        // For one-on-one chats, derive shared key using otherPublicKey if provided.
-        if (!chat.isGroupChat && chat.otherPublicKey) {
-          const otherPublicKey = await importPublicKey(chat.otherPublicKey);
-          const authStoreInstance = useAuthStore();
-          if (!authStoreInstance.ecdhPrivateKey) {
-            // Generate and store ECDH key pair on login ideally.
-            const keyPair = await window.crypto.subtle.generateKey(
-              { name: "ECDH", namedCurve: "P-256" },
-              true,
-              ["deriveKey", "deriveBits"]
-            );
-            authStoreInstance.ecdhPrivateKey = keyPair.privateKey;
-          }
-          this.sharedKey = await deriveSharedKey(authStoreInstance.ecdhPrivateKey, otherPublicKey);
-          // console.log('[selectChat] Derived shared key using otherPublicKey:', this.sharedKey);
-        } else {
-          console.warn('[selectChat] No otherPublicKey found; using fallback key derivation.');
-          this.sharedKey = await getKey();
-        }
-    
-        // Decrypt messages (if they have an IV)
-        const decryptedMessages = await Promise.all(response.data.map(async (msg) => {
-          if (!msg.iv) {
-            // console.log('[selectChat] Message has no IV, assuming plaintext:', msg);
-            return msg;
-          }
-          try {
-            const decryptedContent = await decryptWithSharedKey(this.sharedKey, msg.content, msg.iv);
-            return { ...msg, content: decryptedContent };
-          } catch (error) {
-            console.log('[selectChat] Error decrypting message:', error);
-            return msg;
-          }
-        }));
-        this.messages = decryptedMessages;
-    
-        // Join the chat room and emit read receipt events
-        if (this.socket) {
-          this.socket.emit("joinRoom", chat._id);
-          const currentUserId = useAuthStore().user._id;
-          const unreadMessages = this.messages.filter(msg => !msg.readBy?.includes(currentUserId));
-          unreadMessages.forEach(msg => {
-            this.socket.emit("messageRead", { messageId: msg._id, chatId: chat._id, userId: currentUserId });
+        try {
+          const token = localStorage.getItem("token");
+          const response = await axios.get(`${messageurl}/${chat._id}`, {
+            headers: { Authorization: `Bearer ${token}` }
           });
+          // console.log('[selectChat] Fetched messages:', response.data);
+      
+          // For one-on-one chats, derive shared key using otherPublicKey if provided.
+          if (!chat.isGroupChat && chat.otherPublicKey) {
+            const otherPublicKey = await importPublicKey(chat.otherPublicKey);
+            const authStoreInstance = useAuthStore();
+            if (!authStoreInstance.ecdhPrivateKey) {
+              // Generate and store ECDH key pair on login ideally.
+              const keyPair = await window.crypto.subtle.generateKey(
+                { name: "ECDH", namedCurve: "P-256" },
+                true,
+                ["deriveKey", "deriveBits"]
+              );
+              authStoreInstance.ecdhPrivateKey = keyPair.privateKey;
+            }
+            this.sharedKey = await deriveSharedKey(authStoreInstance.ecdhPrivateKey, otherPublicKey);
+            // console.log('[selectChat] Derived shared key using otherPublicKey:', this.sharedKey);
+          } else {
+            console.warn('[selectChat] No otherPublicKey found; using fallback key derivation.');
+            this.sharedKey = await getKey();
+          }
+      
+          // Decrypt messages (if they have an IV)
+          const decryptedMessages = await Promise.all(response.data.map(async (msg) => {
+            if (!msg.iv) {
+              // console.log('[selectChat] Message has no IV, assuming plaintext:', msg);
+              return msg;
+            }
+            try {
+              const decryptedContent = await decryptWithSharedKey(this.sharedKey, msg.content, msg.iv);
+              return { ...msg, content: decryptedContent };
+            } catch (error) {
+              console.log('[selectChat] Error decrypting message:', error);
+              return msg;
+            }
+          }));
+          this.messages = decryptedMessages;
+      
+          // Join the chat room and emit read receipt events
+          if (this.socket) {
+            this.socket.emit("joinRoom", chat._id);
+            const currentUserId = useAuthStore().user._id;
+            const unreadMessages = this.messages.filter(msg => !msg.readBy?.includes(currentUserId));
+            unreadMessages.forEach(msg => {
+              this.socket.emit("messageRead", { messageId: msg._id, chatId: chat._id, userId: currentUserId });
+            });
+          }
+        } catch (error) {
+          console.log('[selectChat] Error fetching messages:', error);
+          this.messages = []; // Fallback if there's an error
+        } finally {
+          this.loading = false;
         }
-      } catch (error) {
-        console.log('[selectChat] Error fetching messages:', error);
-        this.messages = []; // Fallback if there's an error
-      } finally {
-        this.loading = false;
-      }
-      await this.fetchUserChats();
+        await this.fetchUserChats();
     },
     
-
+    
     toggleSound() {
       this.soundEnabled = !this.soundEnabled;
       // console.log('[toggleSound] Sound enabled:', this.soundEnabled);
@@ -324,6 +322,7 @@ export const useChatStore = defineStore('chat', {
         });
       });
 
+     
       this.socket.on('receiveMessage', async (message) => {
         // console.log('[connectSocket] Received new message:', message);
         if (!this.sharedKey) {
@@ -356,6 +355,7 @@ export const useChatStore = defineStore('chat', {
           }
         }
       });
+      
 
       this.socket.on('messageEdited', (updatedMessage) => {
         // console.log('[connectSocket] Received edited message:', updatedMessage);
@@ -814,7 +814,7 @@ export const useChatStore = defineStore('chat', {
       // Set a timeout to stop typing after 3 seconds
       setTimeout(() => {
       this.stopTyping();
-      }, 3000);
+      }, 5000);
     },
 
     stopTyping() {

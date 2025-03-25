@@ -73,9 +73,12 @@
                             chat.participants.filter(p => p._id !== authStore.user._id)[0]?.email || "Unknown"))
                 }}
               </p>
-              <p class="text-[10px] md:text-xs text-gray-400">
-                <!-- {{ chat.lastMessage }} -->
-              </p>
+              <!-- <div v-if="chat.unreadCount > 0" class="ml-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">
+                {{ chat.unreadCount }}
+              </div> -->
+              <p class="text-[10px] md:text-xs text-purple-900 truncate">
+                {{ chat.lastMessage?.content }}
+              </p>              
             </div>
           </div>
         </li>
@@ -159,19 +162,21 @@
           
             <!-- Avatar Container (Right-aligned) -->
             <div class="w-12 h-12 ml-auto flex items-center justify-center bg-purple-500 text-white rounded-xl shadow-sm relative">
-              <span class="md:hidden font-bold">{{ getInitials(chatTitle) }}</span>
+              <img class="w-8 h-8" src="/chat.svg"/>
+              <!-- <span class="md:hidden font-bold">{{ getInitials(chatTitle) }}</span> -->
               <!-- Full chat title visible on medium+ screens -->
-              <span class="hidden md:inline font-bold">{{  getInitials(chatTitle) }}</span>
+              <!-- <span class="hidden md:inline font-bold">{{  getInitials(chatTitle) }}</span> -->
               
               <!-- Online Status Indicator -->
               <div v-if="isUserOnline" class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
             </div>
           </div>
-          <div>
-            <h2 class="text-lg font-bold text-gray-900">{{ chatTitle }}</h2>
-            <p class="text-sm text-gray-500">
+          <div>            
+            <h2 v-if="chatStore.selectedChat" class="text-lg font-bold text-gray-900">{{ chatTitle }}</h2>
+            <p  v-if="chatStore.selectedChat" class="text-sm text-gray-500">
               {{ isUserOnline ? 'Online' : lastSeenFormatted }}
             </p>
+            <h2 v-else class="text-lg font-semibold text-gray-900">ChatterBox IM</h2>
           </div>
         </div>
         
@@ -384,19 +389,20 @@
           </div>
           <span class="text-sm italic">Typing...</span>
         </div>
+              
+        <!-- Media upload progress bar -->
+        <div v-if="chatStore.mediaUploadProgress > 0 && chatStore.mediaUploadProgress < 100" class="progress-container">
+          <p>Uploading: {{ chatStore.mediaUploadProgress }}%</p>
+          <div class="progress-bar">
+            <div
+              class="progress"
+              :style="{ width: chatStore.mediaUploadProgress + '%' }"
+            ></div>
+          </div>
+        </div>
+      
       </section>   
 
-      <!-- Media upload progress bar -->
-      <div v-if="chatStore.mediaUploadProgress > 0 && chatStore.mediaUploadProgress < 100" class="progress-container">
-        <p>Uploading: {{ chatStore.mediaUploadProgress }}%</p>
-        <div class="progress-bar">
-          <div
-            class="progress"
-            :style="{ width: chatStore.mediaUploadProgress + '%' }"
-          ></div>
-        </div>
-      </div>
-      
 
       <!-- Chat Input: Only show if a chat is selected -->
       <!-- <footer v-if="chatStore.selectedChat" class="p-4 border-t bg-white">
@@ -520,9 +526,10 @@
           />
 
           <!-- File Upload -->
+          <input type="file" @change="handleFileUpload" class="hidden" ref="fileInput"/>
           <button
             @click="triggerFileInput"
-            class="p-2.5 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-sm hover:shadow-md hover:scale-[1.02] transition-all"
+            class=" cursor-pointer p-2.5 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-sm hover:shadow-md hover:scale-[1.02] transition-all"
           >
             <svg class="w-5 h-5" viewBox="0 0 28 28" fill="currentColor">
               <!-- SVG paths from original -->
@@ -533,7 +540,7 @@
           <!-- Send Button -->
           <button
             @click="sendMessage"
-            class="p-3 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95"
+            class="cursor-pointer p-3 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
@@ -992,6 +999,7 @@ export default {
       chatStore.selectChat(chat);
       scrollToBottom();
     };
+    
 
     const createChat = async () => {
       createChatError.value = "";
@@ -1424,7 +1432,8 @@ export default {
       sidebarRef,
       isMobileMenuOpen,
       isCollapsed,
-      closeMobileMenu
+      closeMobileMenu,
+      
 
     };
   },
