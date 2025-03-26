@@ -1,8 +1,10 @@
 import { io } from 'socket.io-client';
 
-const socket = io('https://realtimechat-api-cqlr.onrender.com', {
+const socket = io('http://localhost:5000', {
   auth: { token: localStorage.getItem('token') },
   transports: ['websocket'], 
 });
 
 export default socket;
+
+// https://realtimechat-api-cqlr.onrender.com
