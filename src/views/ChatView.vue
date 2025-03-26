@@ -534,10 +534,13 @@
             </button>
             <button
               @click="createChat"
-              class="cursor-pointer px-5 py-2.5 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all"
+              :disabled="createchatloading"
+              class="cursor-pointer px-5 py-2.5 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create Chat
+              <span v-if="createchatloading">Creating...</span>
+              <span v-else>Create Chat</span>
             </button>
+          
           </div>
         </div>
       </div>
@@ -905,6 +908,7 @@ export default {
       scrollToBottom();
     };
     
+    const createchatloading = ref(false);
 
     const createChat = async () => {
       createChatError.value = "";
@@ -929,6 +933,7 @@ export default {
       if (!emails.includes(loggedInUserEmail)) {
         emails.push(loggedInUserEmail);
       }
+      createchatloading.value = true;
 
       try {
         await chatStore.createChat(emails, isGroupChat.value, groupName.value);
@@ -952,6 +957,8 @@ export default {
         } else {
           createChatError.value = "Failed to create chat. Please try again.";
         }
+      } finally {
+        createchatloading.value = false;  
       }
     };
 
@@ -1181,18 +1188,13 @@ export default {
 
 
     const sortedChats = computed(() => {
-      return [...(chatStore.chats || [])].sort((a, b) => {
-        const aTime = a.lastMessage?.createdAt 
-          ? new Date(a.lastMessage.createdAt) 
-          : new Date(a.updatedAt || a.createdAt || 0); // Fallback to 0 if all are missing
-
-        const bTime = b.lastMessage?.createdAt 
-          ? new Date(b.lastMessage.createdAt) 
-          : new Date(b.updatedAt || b.createdAt || 0);
-
-        return bTime - aTime; // Newer chats come first
+      return [...chatStore.chats].sort((a, b) => {
+        const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt) : new Date(a.updatedAt || a.createdAt);
+        const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt) : new Date(b.updatedAt || b.createdAt);
+        return bTime - aTime; // Sort newest chats first
       });
     });
+
 
 
     const startAudio = async () => {
@@ -1355,7 +1357,7 @@ export default {
       isMobileMenuOpen,
       isCollapsed,
       closeMobileMenu,
-      
+      createchatloading
 
     };
   },
