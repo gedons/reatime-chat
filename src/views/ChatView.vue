@@ -52,7 +52,7 @@
           <!-- Avatar/Icon -->
           <div class="relative flex-shrink-0 w-8 h-8 md:w-12 md:h-12 flex items-center justify-center bg-purple-500 text-white rounded-lg md:rounded-xl font-semibold shadow-sm text-xs md:text-base">
             <!-- ... (keep existing avatar content) ... -->
-            {{ getInitials(chat?.participants?.filter(p => p._id !== authStore.user._id)[0]?.email || "Unknown") }}
+            {{ getInitials(chat?.participants?.filter(p => p._id !== authStore.user._id)[0]?.email) }}
 
 
             <span v-if="chat.isAIChat" class="text-white">
@@ -107,7 +107,7 @@
         <button v-show="!isCollapsed"
           @click="startAIChat"
           :disabled="hasAIChat"
-          class="p-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+          class="cursor-pointer p-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -229,7 +229,7 @@
               </div>
 
               <!-- Message Bubble -->
-              <div class="relative max-w-[85%]">
+              <div class="relative max-w-lg">
                 <div class="bg-gradient-to-br from-purple-600 to-blue-500 text-white p-4 rounded-2xl rounded-br-none shadow-lg">
                   <!-- Message content... -->
                   <template v-if="msg.fileUrl">
