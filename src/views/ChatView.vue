@@ -44,15 +44,16 @@
       <ul class="space-y-2">
         <li
           v-for="chat in sortedChats"
-          :key="chat._id"
+          :key="chat?._id"
           @click="selectChat(chat)"
-          class="group flex items-center p-2 md:p-3 hover:bg-purple-50 rounded-lg md:rounded-xl cursor-pointer transition-colors duration-200"
-          :class="{ 'bg-purple-50': chatStore.selectedChat?._id === chat._id }"
+          class="flex items-center p-2 hover:bg-purple-50 rounded-lg cursor-pointer transition-colors duration-200"
+          :class="{ 'bg-purple-50': chatStore.selectedChat?._id === chat?._id }"
         >
           <!-- Avatar/Icon -->
           <div class="relative flex-shrink-0 w-8 h-8 md:w-12 md:h-12 flex items-center justify-center bg-purple-500 text-white rounded-lg md:rounded-xl font-semibold shadow-sm text-xs md:text-base">
             <!-- ... (keep existing avatar content) ... -->
-            {{ getInitials(chat.participants.filter(p => p._id !== authStore.user._id)[0]?.email) }}
+            {{ getInitials(chat?.participants?.filter(p => p._id !== authStore.user._id)[0]?.email || "Unknown") }}
+
 
             <span v-if="chat.isAIChat" class="text-white">
               <svg class="w-6 h-6 mb-1 mr-0.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M9 15C8.44771 15 8 15.4477 8 16C8 16.5523 8.44771 17 9 17C9.55229 17 10 16.5523 10 16C10 15.4477 9.55229 15 9 15Z" fill="#ffffff"></path> <path d="M14 16C14 15.4477 14.4477 15 15 15C15.5523 15 16 15.4477 16 16C16 16.5523 15.5523 17 15 17C14.4477 17 14 16.5523 14 16Z" fill="#ffffff"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M12 1C10.8954 1 10 1.89543 10 3C10 3.74028 10.4022 4.38663 11 4.73244V7H6C4.34315 7 3 8.34315 3 10V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V10C21 8.34315 19.6569 7 18 7H13V4.73244C13.5978 4.38663 14 3.74028 14 3C14 1.89543 13.1046 1 12 1ZM5 10C5 9.44772 5.44772 9 6 9H7.38197L8.82918 11.8944C9.16796 12.572 9.86049 13 10.618 13H13.382C14.1395 13 14.832 12.572 15.1708 11.8944L16.618 9H18C18.5523 9 19 9.44772 19 10V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20V10ZM13.382 11L14.382 9H9.61803L10.618 11H13.382Z" fill="#ffffff"></path> <path d="M1 14C0.447715 14 0 14.4477 0 15V17C0 17.5523 0.447715 18 1 18C1.55228 18 2 17.5523 2 17V15C2 14.4477 1.55228 14 1 14Z" fill="#ffffff"></path> <path d="M22 15C22 14.4477 22.4477 14 23 14C23.5523 14 24 14.4477 24 15V17C24 17.5523 23.5523 18 23 18C22.4477 18 22 17.5523 22 17V15Z" fill="#ffffff"></path> </g></svg>
@@ -65,13 +66,13 @@
             <div class="flex items-center justify-between">
               <p class="text-xs md:text-sm font-semibold text-gray-900 truncate">
                 {{ 
-                  chat.isAIChat 
+                  chat?.isAIChat 
                     ? "AI Chat" 
-                    : (chat.isGroupChat 
-                        ? chat.name 
-                        : (chat.participants.filter(p => p._id !== authStore.user._id)[0]?.username || 
-                            chat.participants.filter(p => p._id !== authStore.user._id)[0]?.email || "Unknown"))
-                }}
+                    : (chat?.isGroupChat 
+                        ? chat?.name || "Unnamed Group"
+                        : (chat?.participants?.filter(p => p?._id !== authStore?.user?._id)[0]?.username || 
+                            chat?.participants?.filter(p => p?._id !== authStore?.user?._id)[0]?.email || "Unknown"))
+                }}                
               </p>
               <!-- <div v-if="chat.unreadCount > 0" class="ml-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">
                 {{ chat.unreadCount }}
@@ -493,7 +494,7 @@
       >
         <div class="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
           <div class="p-6 border-b border-gray-200/60">
-            <h3 class="text-xl font-bold text-gray-800">Create New Chat</h3>
+            <h3 class="text-xl font-semibold text-gray-800">Create New Chat</h3>
           </div>
 
           <div class="p-6">
@@ -533,7 +534,7 @@
             </button>
             <button
               @click="createChat"
-              class="px-5 py-2.5 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all"
+              class="cursor-pointer px-5 py-2.5 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all"
             >
               Create Chat
             </button>
@@ -550,7 +551,7 @@
       >
         <div class="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
           <div class="p-6 border-b border-gray-200/60">
-            <h3 class="text-xl font-bold text-gray-800">Edit Message</h3>
+            <h3 class="text-xl font-semibold text-gray-800">Edit Message</h3>
           </div>
 
           <div class="p-6">
@@ -912,23 +913,35 @@ export default {
         createChatError.value = "You must be logged in to create a chat.";
         return;
       }
+
       const loggedInUserEmail = authStore.user.email;
       let emails = [
         ...new Set(
           newChatEmails.value.split(",").map((email) => email.trim()).filter((email) => email)
         ),
       ];
+
       if (!emails.length) {
         createChatError.value = "Please enter at least one valid email.";
         return;
       }
+
       if (!emails.includes(loggedInUserEmail)) {
         emails.push(loggedInUserEmail);
       }
+
       try {
         await chatStore.createChat(emails, isGroupChat.value, groupName.value);
-        closeCreateChatModal();
-        await chatStore.fetchUserChats();
+        
+        // Close the modal properly after a short delay
+        setTimeout(() => {
+          closeCreateChatModal();
+          newChatEmails.value = ""; // Reset input fields
+          isGroupChat.value = false;
+          groupName.value = "";
+        }, 300); 
+        
+        await chatStore.fetchUserChats(); // Fetch chats to update the list
       } catch (error) {
         console.error("Chat creation error:", error);
         if (error.response) {
@@ -941,6 +954,7 @@ export default {
         }
       }
     };
+
 
     const closeCreateChatModal = () => {
       showCreateChatModal.value = false;
@@ -1047,9 +1061,7 @@ export default {
           str = input.content || "";
         } else {
           str = String(input);
-        }
-        // Remove any content between <think> and </think> tags (including the tags)
-        // This regex will match everything between the opening and closing tags (non-greedy).
+        }      
         const withoutChain = str.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
         return withoutChain;
     };
@@ -1169,13 +1181,19 @@ export default {
 
 
     const sortedChats = computed(() => {
-      // Sort by the timestamp of the last message if available, otherwise by updatedAt or createdAt
-      return [...chatStore.chats].sort((a, b) => {
-        const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt) : new Date(a.updatedAt || a.createdAt);
-        const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt) : new Date(b.updatedAt || b.createdAt);
-        return bTime - aTime; // descending order: newer chats come first
+      return [...(chatStore.chats || [])].sort((a, b) => {
+        const aTime = a.lastMessage?.createdAt 
+          ? new Date(a.lastMessage.createdAt) 
+          : new Date(a.updatedAt || a.createdAt || 0); // Fallback to 0 if all are missing
+
+        const bTime = b.lastMessage?.createdAt 
+          ? new Date(b.lastMessage.createdAt) 
+          : new Date(b.updatedAt || b.createdAt || 0);
+
+        return bTime - aTime; // Newer chats come first
       });
     });
+
 
     const startAudio = async () => {
       recording.value = true;
