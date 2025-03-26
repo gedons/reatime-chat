@@ -40,7 +40,7 @@
             Pricing
             <span class="absolute -bottom-1 left-0 w-0 h-[2px] bg-purple-300 transition-all duration-300 group-hover:w-full"></span>
           </a>
-          <a href="#cta" @click.prevent="scrollToSection('cta')" class="bg-gradient-to-r from-purple-500 to-blue-500 px-6 py-2 rounded-full hover:scale-105 transition-transform duration-300 shadow-lg">
+          <a href="#cta" @click.prevent="scrollToSection('cta')" class="text-white bg-gradient-to-r from-purple-500 to-blue-500 px-6 py-2 rounded-full hover:scale-105 transition-transform duration-300 shadow-lg">
             Sign Up
           </a>
         </div>
