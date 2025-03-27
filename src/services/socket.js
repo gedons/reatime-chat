@@ -7,3 +7,5 @@ const socket = io('https://realtimechat-api-cqlr.onrender.com', {
 
 export default socket;
 
+
+//https://realtimechat-api-cqlr.onrender.com
