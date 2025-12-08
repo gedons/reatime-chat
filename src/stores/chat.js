@@ -1,7 +1,7 @@
 // src/stores/chat.js
 import { defineStore } from 'pinia';
 import { useAuthStore } from '../stores/auth';
-import CryptoJS from "crypto-js"; 
+import CryptoJS from "crypto-js";
 import axios from 'axios';
 import { useToast } from 'vue-toast-notification';
 import 'vue-toast-notification/dist/theme-sugar.css';
@@ -34,10 +34,10 @@ export const useChatStore = defineStore('chat', {
     myECDHPrivateKey: null,  // Generated at login
     sharedKey: null,         // Derived per conversation
 
-    mediaUploadProgress: 0,    
+    mediaUploadProgress: 0,
     recording: false, // added to track recording state
     mediaRecorder: null, // to store the recorder instance
-    recordedChunks: [], 
+    recordedChunks: [],
 
     peerConnection: null,
     localStream: null,
@@ -61,10 +61,10 @@ export const useChatStore = defineStore('chat', {
 
     async fetchUserChats() {
       this.loading = true;
-      this.setAuthHeader();      
+      this.setAuthHeader();
       try {
-        const response = await axios.get(`${url}`);        
-        this.chats = response.data;
+        const response = await axios.get(`${url}`);
+        this.chats = response.data.data || [];
       } catch (error) {
         console.log('[fetchUserChats] Error:', error.response?.data?.message);
         this.error = error.response?.data?.message || 'Failed to fetch chats';
@@ -72,7 +72,7 @@ export const useChatStore = defineStore('chat', {
         this.loading = false;
       }
     },
-    
+
     async fetchPendingChats() {
       this.loading = true;
       this.setAuthHeader();
@@ -80,7 +80,7 @@ export const useChatStore = defineStore('chat', {
       try {
         const response = await axios.get(`${url}/pending`);
         // console.log('[fetchPendingChats] Pending chats:', response.data);
-        this.pendingChats = response.data;
+        this.pendingChats = response.data.data || [];
       } catch (error) {
         console.log('[fetchPendingChats] Error:', error.response?.data?.message);
         this.error = error.response?.data?.message || 'Failed to fetch pending chats';
@@ -92,12 +92,16 @@ export const useChatStore = defineStore('chat', {
     async createChat(participantsEmails, isGroupChat = false, name = '') {
       this.loading = true;
       this.setAuthHeader();
-      // console.log('[createChat] Creating chat with:', { participantsEmails, isGroupChat, name });
       try {
         const response = await axios.post(`${url}/create`, { participantsEmails, isGroupChat, name });
-        // console.log('[createChat] Chat created:', response.data);
-        this.pendingChats.push(response.data);
         toast.success('Chat created successfully');
+
+        // Reload chats to get the complete chat data from server
+        await this.fetchUserChats();
+
+        // Find and return the newly created chat
+        const newChat = this.chats.find(chat => chat._id === response.data.data._id);
+        return newChat || response.data.data;
       } catch (error) {
         console.log('[createChat] Error:', error.response?.data?.message);
         this.error = error.response?.data?.message || 'Failed to create chat';
@@ -115,9 +119,9 @@ export const useChatStore = defineStore('chat', {
         const response = await axios.post(`${url}/ai/create`);
         console.log('[createAIChat] AI chat created:', response.data);
         //  add the new chat to the top of your chats array:
-        this.chats.unshift(response.data);
+        this.chats.unshift(response.data.data);
         toast.success('AI chat created successfully');
-        return response.data;
+        return response.data.data;
       } catch (error) {
         console.error('[createAIChat] Error creating AI chat:', error.response?.data?.message);
         toast.error(error.response?.data?.message || 'Error creating AI chat');
@@ -126,7 +130,7 @@ export const useChatStore = defineStore('chat', {
         this.loading = false;
       }
     },
-    
+
 
     async acceptChat(chatId) {
       this.loading = true;
@@ -167,68 +171,68 @@ export const useChatStore = defineStore('chat', {
     async selectChat(chat) {
       this.loading = true;
       this.selectedChat = chat;
-        try {
-          const token = localStorage.getItem("token");
-          const response = await axios.get(`${messageurl}/${chat._id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          // console.log('[selectChat] Fetched messages:', response.data);
-      
-          // For one-on-one chats, derive shared key using otherPublicKey if provided.
-          if (!chat.isGroupChat && chat.otherPublicKey) {
-            const otherPublicKey = await importPublicKey(chat.otherPublicKey);
-            const authStoreInstance = useAuthStore();
-            if (!authStoreInstance.ecdhPrivateKey) {
-              // Generate and store ECDH key pair on login ideally.
-              const keyPair = await window.crypto.subtle.generateKey(
-                { name: "ECDH", namedCurve: "P-256" },
-                true,
-                ["deriveKey", "deriveBits"]
-              );
-              authStoreInstance.ecdhPrivateKey = keyPair.privateKey;
-            }
-            this.sharedKey = await deriveSharedKey(authStoreInstance.ecdhPrivateKey, otherPublicKey);
-            // console.log('[selectChat] Derived shared key using otherPublicKey:', this.sharedKey);
-          } else {
-            console.warn('[selectChat] No otherPublicKey found; using fallback key derivation.');
-            this.sharedKey = await getKey();
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(`${messageurl}/${chat._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        // console.log('[selectChat] Fetched messages:', response.data);
+
+        // For one-on-one chats, derive shared key using otherPublicKey if provided.
+        if (!chat.isGroupChat && chat.otherPublicKey) {
+          const otherPublicKey = await importPublicKey(chat.otherPublicKey);
+          const authStoreInstance = useAuthStore();
+          if (!authStoreInstance.ecdhPrivateKey) {
+            // Generate and store ECDH key pair on login ideally.
+            const keyPair = await window.crypto.subtle.generateKey(
+              { name: "ECDH", namedCurve: "P-256" },
+              true,
+              ["deriveKey", "deriveBits"]
+            );
+            authStoreInstance.ecdhPrivateKey = keyPair.privateKey;
           }
-      
-          // Decrypt messages (if they have an IV)
-          const decryptedMessages = await Promise.all(response.data.map(async (msg) => {
-            if (!msg.iv) {
-              // console.log('[selectChat] Message has no IV, assuming plaintext:', msg);
-              return msg;
-            }
-            try {
-              const decryptedContent = await decryptWithSharedKey(this.sharedKey, msg.content, msg.iv);
-              return { ...msg, content: decryptedContent };
-            } catch (error) {
-              console.log('[selectChat] Error decrypting message:', error);
-              return msg;
-            }
-          }));
-          this.messages = decryptedMessages;
-      
-          // Join the chat room and emit read receipt events
-          if (this.socket) {
-            this.socket.emit("joinRoom", chat._id);
-            const currentUserId = useAuthStore().user._id;
-            const unreadMessages = this.messages.filter(msg => !msg.readBy?.includes(currentUserId));
-            unreadMessages.forEach(msg => {
-              this.socket.emit("messageRead", { messageId: msg._id, chatId: chat._id, userId: currentUserId });
-            });
-          }
-        } catch (error) {
-          console.log('[selectChat] Error fetching messages:', error);
-          this.messages = []; // Fallback if there's an error
-        } finally {
-          this.loading = false;
+          this.sharedKey = await deriveSharedKey(authStoreInstance.ecdhPrivateKey, otherPublicKey);
+          // console.log('[selectChat] Derived shared key using otherPublicKey:', this.sharedKey);
+        } else {
+          console.warn('[selectChat] No otherPublicKey found; using fallback key derivation.');
+          this.sharedKey = await getKey();
         }
-        await this.fetchUserChats();
+
+        // Decrypt messages (if they have an IV)
+        const decryptedMessages = await Promise.all(response.data.data.map(async (msg) => {
+          if (!msg.iv) {
+            // console.log('[selectChat] Message has no IV, assuming plaintext:', msg);
+            return msg;
+          }
+          try {
+            const decryptedContent = await decryptWithSharedKey(this.sharedKey, msg.content, msg.iv);
+            return { ...msg, content: decryptedContent };
+          } catch (error) {
+            console.log('[selectChat] Error decrypting message:', error);
+            return msg;
+          }
+        }));
+        this.messages = decryptedMessages;
+
+        // Join the chat room and emit read receipt events
+        if (this.socket) {
+          this.socket.emit("joinRoom", chat._id);
+          const currentUserId = useAuthStore().user._id;
+          const unreadMessages = this.messages.filter(msg => !msg.readBy?.includes(currentUserId));
+          unreadMessages.forEach(msg => {
+            this.socket.emit("messageRead", { messageId: msg._id, chatId: chat._id, userId: currentUserId });
+          });
+        }
+      } catch (error) {
+        console.log('[selectChat] Error fetching messages:', error);
+        this.messages = []; // Fallback if there's an error
+      } finally {
+        this.loading = false;
+      }
+      await this.fetchUserChats();
     },
-    
-    
+
+
     toggleSound() {
       this.soundEnabled = !this.soundEnabled;
       // console.log('[toggleSound] Sound enabled:', this.soundEnabled);
@@ -236,29 +240,29 @@ export const useChatStore = defineStore('chat', {
     },
 
     async editMessage(messageId, newContent) {
-        this.messageLoading = true;
-        this.setAuthHeader();
-        console.log('[editMessage] Editing message:', messageId, 'with new content:', newContent);
-        try {
-          const response = await axios.put(`${messageurl}/${messageId}`, { newContent });
-          // console.log('[editMessage] API Response:', response.data);
-          // Emit a socket event so that other clients are notified
-          this.socket.emit('editMessage', { messageId, newContent }, (socketResponse) => {
-            console.log('[editMessage] Socket response:', socketResponse);
-          });
-          // Update the local messages array (force reactivity)
-          this.messages = this.messages.map(msg =>
-            msg._id === messageId ? { ...msg, content: response.data.content } : msg
-          );
-          toast.success("Message edited successfully");
-          return response.data;
-        } catch (error) {
-          console.error('[editMessage] Error:', error.response?.data?.message);
-          toast.error("Error editing message");
-          throw error;
-        } finally {
-          this.messageLoading = false;
-        }
+      this.messageLoading = true;
+      this.setAuthHeader();
+      console.log('[editMessage] Editing message:', messageId, 'with new content:', newContent);
+      try {
+        const response = await axios.put(`${messageurl}/${messageId}`, { newContent });
+        // console.log('[editMessage] API Response:', response.data);
+        // Emit a socket event so that other clients are notified
+        this.socket.emit('editMessage', { messageId, newContent }, (socketResponse) => {
+          console.log('[editMessage] Socket response:', socketResponse);
+        });
+        // Update the local messages array (force reactivity)
+        this.messages = this.messages.map(msg =>
+          msg._id === messageId ? { ...msg, content: response.data.data.content } : msg
+        );
+        toast.success("Message edited successfully");
+        return response.data.data;
+      } catch (error) {
+        console.error('[editMessage] Error:', error.response?.data?.message);
+        toast.error("Error editing message");
+        throw error;
+      } finally {
+        this.messageLoading = false;
+      }
     },
 
     async deleteMessage(messageId) {
@@ -287,11 +291,11 @@ export const useChatStore = defineStore('chat', {
         this.messageLoading = false;
       }
     },
-      
+
     connectSocket(userId) {
       if (this.socket) return;
       // console.log('[connectSocket] Connecting socket for user:', userId);
-      this.socket = io(baseUrl, { 
+      this.socket = io(baseUrl, {
         query: { userId },
         reconnection: true,
         reconnectionAttempts: 5,
@@ -322,7 +326,7 @@ export const useChatStore = defineStore('chat', {
         });
       });
 
-     
+
       this.socket.on('receiveMessage', async (message) => {
         // console.log('[connectSocket] Received new message:', message);
         if (!this.sharedKey) {
@@ -355,7 +359,7 @@ export const useChatStore = defineStore('chat', {
           }
         }
       });
-      
+
 
       this.socket.on('messageEdited', (updatedMessage) => {
         // console.log('[connectSocket] Received edited message:', updatedMessage);
@@ -369,26 +373,41 @@ export const useChatStore = defineStore('chat', {
       this.socket.on('messageDeleted', ({ messageId }) => {
         // console.log('[connectSocket] Received delete notification for message:', messageId);
         this.messages = this.messages.filter(msg => msg._id !== messageId);
-      });  
-    
+      });
+
 
       this.socket.on('typing', (data) => {
         // console.log('[connectSocket] Typing event:', data);
         if (!this.selectedChat || this.selectedChat._id !== data.chatId) return;
         this.typingUsers[data.userId] = true;
       });
-    
+
       this.socket.on('stopTyping', (data) => {
         // console.log('[connectSocket] Stop typing event:', data);
         if (!this.selectedChat || this.selectedChat._id !== data.chatId) return;
         delete this.typingUsers[data.userId];
-      });    
+      });
 
       this.socket.on('incomingVoiceCall', (data) => {
         console.log('[connectSocket] Incoming voice call:', data);
         // Display a notification to the user (e.g., using toast or a modal)
         toast.info(`Incoming voice call from ${data.caller}`);
         // You may also update your UI state here to show an "Incoming call" modal
+      });
+
+      this.socket.on('voiceCallAnswer', (data) => {
+        this.handleIncomingAnswer(data);
+      });
+
+      this.socket.on('voiceCallCandidate', (data) => {
+        this.handleIncomingCandidate(data);
+      });
+
+      this.socket.on('hangUpVoiceCall', () => {
+        if (this.callActive) {
+          this.hangUpVoiceCall();
+          toast.info('Call ended');
+        }
       });
     },
 
@@ -397,35 +416,74 @@ export const useChatStore = defineStore('chat', {
         toast.error('Invalid chat or empty message content');
         return;
       }
-    
-      // If the chat is an AI chat, handle it separately.
-      if (this.selectedChat.isAIChat) {
-        console.log('[sendMessage] Detected AI chat, calling AI endpoint.');
+
+      // Check if message starts with /ai command in normal chat
+      const isAICommand = plainText.trim().toLowerCase().startsWith('/ai ');
+      const aiPrompt = isAICommand ? plainText.trim().substring(4).trim() : plainText;
+
+      // If the chat is an AI chat or /ai command is used, handle it with AI.
+      if (this.selectedChat.isAIChat || isAICommand) {
+        console.log('[sendMessage] Detected AI chat or /ai command, calling AI endpoint.');
+
+        // For /ai command in normal chat, first show the user's message
+        if (isAICommand && !this.selectedChat.isAIChat) {
+          const userMsg = {
+            _id: 'user-' + Date.now(),
+            chatId: this.selectedChat._id,
+            content: plainText,
+            sender: { _id: useAuthStore().user._id, username: useAuthStore().user.username },
+            createdAt: new Date().toISOString(),
+            isRead: false,
+            delivered: true,
+            status: 'delivered'
+          };
+          this.messages.push(userMsg);
+        }
+
+        // Show loading message
+        const loadingMsg = {
+          _id: 'loading-' + Date.now(),
+          chatId: this.selectedChat._id,
+          content: 'Getting AI response...',
+          sender: { _id: "ai", username: "AI Assistant" },
+          createdAt: new Date().toISOString(),
+          isLoading: true,
+          isRead: true,
+          delivered: true,
+          status: 'delivered'
+        };
+        this.messages.push(loadingMsg);
+
         try {
-          const aiResponse = await this.getAIResponse(plainText);
+          const aiResponse = await this.getAIResponse(aiPrompt);
+          // Remove loading message
+          this.messages = this.messages.filter(msg => msg._id !== loadingMsg._id);
+
           if (aiResponse) {
             const aiMsg = {
-              _id: Date.now().toString(), // temporary id (for UI uniqueness)
+              _id: Date.now().toString(),
               chatId: this.selectedChat._id,
               content: aiResponse,
               sender: { _id: "ai", username: "AI Assistant" },
               createdAt: new Date().toISOString(),
               isRead: true,
               delivered: true,
-              status: 'delivered'
+              status: 'delivered',
+              isAI: true
             };
             console.log('[sendMessage] AI message received:', aiMsg);
             this.messages.push(aiMsg);
             return aiMsg;
           }
         } catch (error) {
+          // Remove loading message
+          this.messages = this.messages.filter(msg => msg._id !== loadingMsg._id);
           console.error('[sendMessage] Error getting AI response:', error);
           toast.error('Failed to get AI response');
         }
-        newMessage.value = "";
         return;
       }
-    
+
       try {
         // Ensure we have a valid shared key.
         if (!this.sharedKey) {
@@ -448,7 +506,7 @@ export const useChatStore = defineStore('chat', {
           sender: localStorage.getItem('userId') || authStoreInstance.user?._id,
         };
         console.log('[sendMessage] Encrypted Message Data:', messageData);
-    
+
         // Emit the message via WebSocket and wait for server confirmation.
         this.socket.emit('sendMessage', messageData, async (response) => {
           console.log('[sendMessage] Server response:', response);
@@ -479,13 +537,13 @@ export const useChatStore = defineStore('chat', {
         console.error('[sendMessage] Error:', error);
         toast.error('Failed to send message');
       }
-    },     
+    },
 
     async uploadMediaFile(file) {
       console.log('[uploadMediaFile] Uploading file:', file.name || 'Audio Blob');
       const formData = new FormData();
       formData.append('file', file);
-      
+
       // Reset progress to 0 before starting
       this.mediaUploadProgress = 0;
       try {
@@ -504,14 +562,14 @@ export const useChatStore = defineStore('chat', {
         // Reset progress once done
         this.mediaUploadProgress = 0;
         // Return the fileUrl from Cloudinary (or your file storage)
-        return response.data.fileUrl;
+        return response.data.data.fileUrl;
       } catch (error) {
         this.mediaUploadProgress = 0;
         console.log('[uploadMediaFile] Upload error:', error);
         throw error;
       }
     },
-    
+
     async sendMediaMessage(file) {
       try {
         // Use the correct function name to upload the media file.
@@ -547,7 +605,7 @@ export const useChatStore = defineStore('chat', {
         const mediaRecorder = new MediaRecorder(stream);
         this.mediaRecorder = mediaRecorder;
         this.recording = true;
-        
+
         mediaRecorder.ondataavailable = event => {
           if (event.data.size > 0) {
             this.recordedChunks.push(event.data);
@@ -600,26 +658,26 @@ export const useChatStore = defineStore('chat', {
         this.mediaRecorder.stop();
         console.log('[stopAudioRecording] Recording stopped');
       }
-    },  
+    },
 
     async startVoiceCall() {
       try {
         console.log('[startVoiceCall] Requesting local audio stream...');
         this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log('[startVoiceCall] Local audio stream obtained.');
-    
+
         // Create the RTCPeerConnection with a public STUN server.
         this.peerConnection = new RTCPeerConnection({
           iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
         });
         console.log('[startVoiceCall] RTCPeerConnection created.');
-    
+
         // Add local audio tracks.
         this.localStream.getTracks().forEach(track => {
           this.peerConnection.addTrack(track, this.localStream);
         });
         console.log('[startVoiceCall] Local tracks added to the peer connection.');
-    
+
         // When a remote track is received, add it to remoteStream and play.
         this.peerConnection.ontrack = (event) => {
           if (!this.remoteStream) {
@@ -632,7 +690,7 @@ export const useChatStore = defineStore('chat', {
             this.remoteAudio.play().catch(err => console.error('Error playing remote audio:', err));
           }
         };
-    
+
         // Handle ICE candidates by sending them via socket.
         this.peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
@@ -643,12 +701,12 @@ export const useChatStore = defineStore('chat', {
             console.log('[startVoiceCall] ICE candidate generated:', event.candidate);
           }
         };
-    
+
         // Create an SDP offer.
         const offer = await this.peerConnection.createOffer();
         await this.peerConnection.setLocalDescription(offer);
         console.log('[startVoiceCall] SDP Offer created and set.');
-    
+
         // Emit the voice call offer along with the caller's name.
         const authStoreInstance = useAuthStore();
         this.socket.emit("voiceCallOffer", {
@@ -658,20 +716,15 @@ export const useChatStore = defineStore('chat', {
           callerName: authStoreInstance.user.username
         });
         console.log('[startVoiceCall] Voice call offer sent.');
-    
-        // Mark call as active and start a timer.
+
+        // Mark call as active but don't start timer yet (will start when answered)
         this.callActive = true;
-        this.callStartTime = Date.now();
-        this.callTimer = setInterval(() => {
-          this.callDuration = Math.floor((Date.now() - this.callStartTime) / 1000);
-          console.log('[startVoiceCall] Call duration:', this.callDuration, 'seconds');
-        }, 1000);
       } catch (error) {
         console.error('[startVoiceCall] Error starting voice call:', error);
         toast.error("Failed to start voice call");
       }
     },
-    
+
 
     async answerVoiceCall(offerData) {
       try {
@@ -720,6 +773,13 @@ export const useChatStore = defineStore('chat', {
 
         this.callActive = true;
         this.callIncoming = false;
+
+        // Start call timer when call is answered
+        this.callStartTime = Date.now();
+        this.callTimer = setInterval(() => {
+          this.callDuration = Math.floor((Date.now() - this.callStartTime) / 1000);
+        }, 1000);
+
         console.log("[answerVoiceCall] Answer sent.");
       } catch (error) {
         console.error("[answerVoiceCall] Error answering voice call:", error);
@@ -769,6 +829,12 @@ export const useChatStore = defineStore('chat', {
       console.log("[handleIncomingAnswer] Received answer:", data);
       if (this.peerConnection) {
         await this.peerConnection.setRemoteDescription(data.answer);
+
+        // Start call timer when answer is received (call is connected)
+        this.callStartTime = Date.now();
+        this.callTimer = setInterval(() => {
+          this.callDuration = Math.floor((Date.now() - this.callStartTime) / 1000);
+        }, 1000);
       }
     },
 
@@ -781,7 +847,7 @@ export const useChatStore = defineStore('chat', {
         }
       }
     },
-    
+
     async getAIResponse(prompt) {
       console.log('[getAIResponse] Prompt:', prompt);
       try {
@@ -792,7 +858,7 @@ export const useChatStore = defineStore('chat', {
         console.log('[getAIResponse] Response from AI endpoint:', response.data);
         if (response.data.success) {
           // Return only the AI message text
-          return response.data.message;
+          return response.data.data.content;
         } else {
           toast.error('Failed to get AI response');
           return null;
@@ -805,20 +871,20 @@ export const useChatStore = defineStore('chat', {
     },
 
     startTyping() {
-      if (!this.selectedChat || !this.socket) return;     
+      if (!this.selectedChat || !this.socket) return;
       this.socket.emit('typing', {
-      chatId: this.selectedChat._id,
-      userId: useAuthStore().user._id,
+        chatId: this.selectedChat._id,
+        userId: useAuthStore().user._id,
       });
 
       // Set a timeout to stop typing after 3 seconds
       setTimeout(() => {
-      this.stopTyping();
+        this.stopTyping();
       }, 5000);
     },
 
     stopTyping() {
-      if (this.socket && this.selectedChat) {      
+      if (this.socket && this.selectedChat) {
         this.socket.emit('stopTyping', {
           chatId: this.selectedChat._id,
           userId: useAuthStore().user?._id,

@@ -1,7 +1,10 @@
 <script setup>
+import Toast from 'primevue/toast';
+import ConfirmDialog from 'primevue/confirmdialog';
 </script>
 
 <template>
-<router-view />
+  <Toast />
+  <ConfirmDialog />
+  <router-view />
 </template>
-

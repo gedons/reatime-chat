@@ -1,1470 +1,764 @@
 <template>
-  <div class="flex h-screen bg-gradient-to-r from-gray-50 to-gray-100">
-   
-    <!-- Sidebar: Chat List -->
-    <aside 
-      ref="sidebarRef"
-      class="transition-all duration-300 ease-in-out bg-white border-r border-gray-200 flex flex-col shadow-xl fixed md:relative h-screen z-20"
-      :class="[
-        isCollapsed ? 'w-16 md:w-20' : 'w-64 md:w-80',
-        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-      ]"
-    >
-    <!-- Sidebar Header -->
-    <div class="p-2 md:p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-blue-500 flex items-center justify-between">
-      <h1 class="text-xl md:text-2xl font-bold text-white truncate" v-show="!isCollapsed">Chats</h1>
-      <div class="flex items-center space-x-2">
-        <button
-          @click="toggleSidebar"
-          class="text-white hover:text-purple-200 transition-colors p-2"
-        >
-          <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path 
-              stroke-linecap="round" 
-              stroke-linejoin="round" 
-              stroke-width="2" 
-              :d="isCollapsed ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'"
-            />
-          </svg>
-        </button>
-        <button
-          @click="toggleSidebar"
-          class="md:hidden text-white hover:text-purple-200 p-2"
-          v-show="!isCollapsed"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Chat List -->
-    <div class="flex-1 overflow-y-auto p-1 md:p-2">
-      <ul class="space-y-2">
-        <li
-          v-for="chat in sortedChats"
-          :key="chat?._id"
-          @click="selectChat(chat)"
-          class="flex items-center p-2 hover:bg-purple-50 rounded-lg cursor-pointer transition-colors duration-200"
-          :class="{ 'bg-purple-50': chatStore.selectedChat?._id === chat?._id }"
-        >
-          <!-- Avatar/Icon -->
-          <div class="relative flex-shrink-0 w-8 h-8 md:w-12 md:h-12 flex items-center justify-center bg-purple-500 text-white rounded-lg md:rounded-xl font-semibold shadow-sm text-xs md:text-base">
-            <!-- ... (keep existing avatar content) ... -->
-            {{ getInitials(chat?.participants?.filter(p => p._id !== authStore.user._id)[0]?.email) }}
-
-
-            <span v-if="chat.isAIChat" class="text-white">
-              <svg class="w-6 h-6 mb-1 mr-0.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M9 15C8.44771 15 8 15.4477 8 16C8 16.5523 8.44771 17 9 17C9.55229 17 10 16.5523 10 16C10 15.4477 9.55229 15 9 15Z" fill="#ffffff"></path> <path d="M14 16C14 15.4477 14.4477 15 15 15C15.5523 15 16 15.4477 16 16C16 16.5523 15.5523 17 15 17C14.4477 17 14 16.5523 14 16Z" fill="#ffffff"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M12 1C10.8954 1 10 1.89543 10 3C10 3.74028 10.4022 4.38663 11 4.73244V7H6C4.34315 7 3 8.34315 3 10V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V10C21 8.34315 19.6569 7 18 7H13V4.73244C13.5978 4.38663 14 3.74028 14 3C14 1.89543 13.1046 1 12 1ZM5 10C5 9.44772 5.44772 9 6 9H7.38197L8.82918 11.8944C9.16796 12.572 9.86049 13 10.618 13H13.382C14.1395 13 14.832 12.572 15.1708 11.8944L16.618 9H18C18.5523 9 19 9.44772 19 10V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20V10ZM13.382 11L14.382 9H9.61803L10.618 11H13.382Z" fill="#ffffff"></path> <path d="M1 14C0.447715 14 0 14.4477 0 15V17C0 17.5523 0.447715 18 1 18C1.55228 18 2 17.5523 2 17V15C2 14.4477 1.55228 14 1 14Z" fill="#ffffff"></path> <path d="M22 15C22 14.4477 22.4477 14 23 14C23.5523 14 24 14.4477 24 15V17C24 17.5523 23.5523 18 23 18C22.4477 18 22 17.5523 22 17V15Z" fill="#ffffff"></path> </g></svg>              
-            </span>
-          </div>
-
-          <!-- Chat Info (collapsed state hidden) -->
-          <div class="ml-2 md:ml-4 flex-1 min-w-0" v-show="!isCollapsed">
-         
-            <div class="flex items-center justify-between">
-              <p class="text-xs md:text-sm font-semibold text-gray-900 truncate">
-                {{ 
-                  chat?.isAIChat 
-                    ? "AI Chat" 
-                    : (chat?.isGroupChat 
-                        ? chat?.name || "Unnamed Group"
-                        : (chat?.participants?.filter(p => p?._id !== authStore?.user?._id)[0]?.username || 
-                            chat?.participants?.filter(p => p?._id !== authStore?.user?._id)[0]?.email || "Unknown"))
-                }}                
-              </p>
-              <!-- <div v-if="chat.unreadCount > 0" class="ml-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">
-                {{ chat.unreadCount }}
-              </div> -->
-              <p class="text-[10px] md:text-xs text-purple-900 truncate">
-                {{ chat.lastMessage?.content }}
-              </p>              
-            </div>
-          </div>
-        </li>
-      </ul>
-    </div>
-
-    <!-- Sidebar Footer -->
-    <div class="p-2 border-t border-gray-200 bg-white">
-      <div class="flex space-x-1 md:space-x-2">
-        <button
-        @click="showCreateChatModal = true"
-        class="cursor-pointer flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-semibold p-3 rounded-xl transition-all duration-200 w-full"
-      >
-          <span v-show="!isCollapsed">New Chat</span>
-          <svg 
-            v-show="isCollapsed" 
-            class="w-6 h-6" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-          </svg>
-        </button>
-        <button v-show="!isCollapsed"
-          @click="startAIChat"
-          :disabled="hasAIChat"
-          class="cursor-pointer p-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-        >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-    </aside>   
-
-    <!-- Main Chat Window -->
-    <main class="flex-1 flex flex-col">
-
-      <!-- Chat Header  -->
-      <header class="relative p-4 border-b bg-white flex items-center justify-between">              
-
-        <div class="flex items-center space-x-4">
-          <div class="relative flex items-center">
-            <!-- Mobile Menu Toggle (Left-aligned) -->
-            <button
-              v-show="!isMobileMenuOpen"
-              @click="openMobileMenu"
-              class="md:hidden p-3 text-white rounded-full shadow-lg bg-purple-500 hover:bg-purple-700 transition-colors mr-2"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          
-            <!-- Avatar Container (Right-aligned) -->
-            <div class="w-12 h-12 ml-auto flex items-center justify-center bg-purple-500 text-white rounded-xl shadow-sm relative">
-              <img class="w-8 h-8" src="/chat.svg"/>
-              <!-- <span class="md:hidden font-bold">{{ getInitials(chatTitle) }}</span> -->
-              <!-- Full chat title visible on medium+ screens -->
-              <!-- <span class="hidden md:inline font-bold">{{  getInitials(chatTitle) }}</span> -->
-              
-              <!-- Online Status Indicator -->
-              <div v-if="isUserOnline" class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-            </div>
-          </div>
-          <div>            
-            <h2 v-if="chatStore.selectedChat" class="text-lg font-bold text-gray-900">{{ chatTitle }}</h2>
-            <p  v-if="chatStore.selectedChat" class="text-sm text-gray-500">
-              {{ isUserOnline ? 'Online' : lastSeenFormatted }}
-            </p>
-            <h2 v-else class="text-lg font-semibold text-gray-900">ChatterBox IM</h2>
-          </div>
-        </div>
-        
-        <div class="flex items-center space-x-4">
-           <!-- Call Button -->
-           <button v-if="chatStore.selectedChat && !chatStore.selectedChat.isAIChat" @click="startVoiceCall" class="p-2 hover:bg-gray-200 cursor-pointer rounded-full  focus:outline-none">                                         
-            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M17 12C19.7614 12 22 9.76142 22 7C22 4.23858 19.7614 2 17 2C14.2386 2 12 4.23858 12 7C12 7.79984 12.1878 8.55582 12.5217 9.22624C12.6105 9.4044 12.64 9.60803 12.5886 9.80031L12.2908 10.9133C12.1615 11.3965 12.6035 11.8385 13.0867 11.7092L14.1997 11.4114C14.392 11.36 14.5956 11.3895 14.7738 11.4783C15.4442 11.8122 16.2002 12 17 12Z" stroke="#000000" stroke-width="1.5"></path> <path d="M17 9L17 5M19 7L15 7" stroke="#000000" stroke-width="1.5" stroke-linecap="round"></path> <path d="M14.1007 16.0272L13.5569 15.5107L14.1007 16.0272ZM14.5562 15.5477L15.1 16.0642H15.1L14.5562 15.5477ZM16.9728 15.2123L16.5987 15.8623H16.5987L16.9728 15.2123ZM18.8833 16.312L18.5092 16.962L18.8833 16.312ZM19.4217 19.7584L19.9655 20.2749L19.4217 19.7584ZM18.0011 21.254L17.4573 20.7375L18.0011 21.254ZM16.6763 21.9631L16.7499 22.7095L16.6763 21.9631ZM6.81536 17.4752L7.35915 16.9587L6.81536 17.4752ZM2.00289 7.96594L1.25397 8.00613L1.25397 8.00613L2.00289 7.96594ZM8.47752 9.50311L9.02131 10.0196H9.02131L8.47752 9.50311ZM8.63424 6.6931L9.24664 6.26012L8.63424 6.6931ZM7.37326 4.90961L6.76086 5.3426V5.3426L7.37326 4.90961ZM4.26145 4.60864L4.80524 5.12516L4.26145 4.60864ZM2.69185 6.26114L2.14806 5.74462L2.14806 5.74462L2.69185 6.26114ZM10.0631 14.0559L10.6069 13.5394L10.0631 14.0559ZM14.6445 16.5437L15.1 16.0642L14.0124 15.0312L13.5569 15.5107L14.6445 16.5437ZM16.5987 15.8623L18.5092 16.962L19.2575 15.662L17.347 14.5623L16.5987 15.8623ZM18.8779 19.2419L17.4573 20.7375L18.5449 21.7705L19.9655 20.2749L18.8779 19.2419ZM16.6026 21.2167C15.1676 21.3584 11.4233 21.2375 7.35915 16.9587L6.27157 17.9917C10.7009 22.655 14.9261 22.8895 16.7499 22.7095L16.6026 21.2167ZM7.35915 16.9587C3.48303 12.8778 2.83285 9.43556 2.75181 7.92574L1.25397 8.00613C1.35322 9.85536 2.1384 13.6403 6.27157 17.9917L7.35915 16.9587ZM8.7345 10.3216L9.02131 10.0196L7.93372 8.9866L7.64691 9.28856L8.7345 10.3216ZM9.24664 6.26012L7.98565 4.47663L6.76086 5.3426L8.02185 7.12608L9.24664 6.26012ZM3.71766 4.09213L2.14806 5.74462L3.23564 6.77765L4.80524 5.12516L3.71766 4.09213ZM8.1907 9.80507C7.64691 9.28856 7.64622 9.28929 7.64552 9.29002C7.64528 9.29028 7.64458 9.29102 7.64411 9.29152C7.64316 9.29254 7.64219 9.29357 7.64121 9.29463C7.63924 9.29675 7.6372 9.29896 7.6351 9.30127C7.63091 9.30588 7.62646 9.31087 7.62178 9.31625C7.61243 9.32701 7.60215 9.33931 7.59116 9.3532C7.56918 9.38098 7.54431 9.41512 7.51822 9.45588C7.46591 9.53764 7.40917 9.64531 7.36112 9.78033C7.26342 10.0549 7.21018 10.4185 7.27671 10.8726C7.40742 11.7647 7.99198 12.9644 9.51933 14.5724L10.6069 13.5394C9.17926 12.0363 8.82761 11.1106 8.76086 10.6551C8.72866 10.4354 8.76138 10.3196 8.77432 10.2832C8.78159 10.2628 8.78635 10.2571 8.78169 10.2644C8.77944 10.2679 8.77494 10.2745 8.76738 10.2841C8.76359 10.2888 8.75904 10.2944 8.7536 10.3006C8.75088 10.3038 8.74793 10.3071 8.74476 10.3106C8.74317 10.3123 8.74152 10.3141 8.73981 10.3159C8.73896 10.3169 8.73809 10.3178 8.7372 10.3187C8.73676 10.3192 8.73608 10.3199 8.73586 10.3202C8.73518 10.3209 8.7345 10.3216 8.1907 9.80507ZM9.51933 14.5724C11.0422 16.1757 12.1923 16.806 13.0698 16.9485C13.5201 17.0216 13.8846 16.9632 14.1606 16.8544C14.2955 16.8012 14.4022 16.7387 14.4823 16.6819C14.5223 16.6535 14.5556 16.6266 14.5824 16.6031C14.5959 16.5913 14.6077 16.5803 14.618 16.5703C14.6232 16.5654 14.628 16.5606 14.6324 16.5562C14.6346 16.554 14.6367 16.5518 14.6387 16.5497C14.6397 16.5487 14.6407 16.5477 14.6417 16.5467C14.6422 16.5462 14.6429 16.5454 14.6431 16.5452C14.6438 16.5444 14.6445 16.5437 14.1007 16.0272C13.5569 15.5107 13.5576 15.51 13.5583 15.5093C13.5585 15.509 13.5592 15.5083 13.5596 15.5078C13.5605 15.5069 13.5614 15.506 13.5623 15.5051C13.5641 15.5033 13.5658 15.5015 13.5674 15.4998C13.5708 15.4965 13.574 15.4933 13.577 15.4904C13.583 15.4846 13.5885 15.4796 13.5933 15.4754C13.6028 15.467 13.6099 15.4616 13.6145 15.4584C13.6239 15.4517 13.6229 15.454 13.6102 15.459C13.5909 15.4666 13.5 15.4987 13.3103 15.4679C12.9077 15.4025 12.0391 15.0472 10.6069 13.5394L9.51933 14.5724ZM7.98565 4.47663C6.97206 3.04305 4.94384 2.80119 3.71766 4.09213L4.80524 5.12516C5.32808 4.57471 6.24851 4.61795 6.76086 5.3426L7.98565 4.47663ZM2.75181 7.92574C2.73038 7.52644 2.90425 7.12654 3.23564 6.77765L2.14806 5.74462C1.61221 6.30877 1.20493 7.09246 1.25397 8.00613L2.75181 7.92574ZM17.4573 20.7375C17.1783 21.0313 16.8864 21.1887 16.6026 21.2167L16.7499 22.7095C17.497 22.6357 18.1016 22.2373 18.5449 21.7705L17.4573 20.7375ZM9.02131 10.0196C9.98889 9.00095 10.0574 7.40678 9.24664 6.26012L8.02185 7.12608C8.44399 7.72315 8.37926 8.51753 7.93372 8.9866L9.02131 10.0196ZM18.5092 16.962C19.33 17.4345 19.4907 18.5968 18.8779 19.2419L19.9655 20.2749C21.2704 18.901 20.8904 16.6019 19.2575 15.662L18.5092 16.962ZM15.1 16.0642C15.4854 15.6584 16.086 15.5672 16.5987 15.8623L17.347 14.5623C16.2485 13.93 14.8861 14.1113 14.0124 15.0312L15.1 16.0642Z" fill="#000000"></path> </g></svg>
-          </button>
-
-          <div class="relative">
-              <button @click="toggleSettings" class="p-2 hover:bg-gray-100 rounded-xl transition-colors duration-200">
-                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-                </svg>
-              </button>
-            <div v-if="showSettings" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-              <ul>
-                <li>
-                  <button class="w-full text-left px-4 py-2 hover:bg-gray-100" @click="toggleSound">
-                    Sound: <span>{{ soundEnabled ? 'On' : 'Off' }}</span>
-                  </button>
-                </li>
-                <li>
-                  <button class="w-full text-left px-4 py-2 hover:bg-gray-100" @click="logout">
-                  Log Out
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </header>   
+  <div class="flex h-screen bg-surface-50 dark:bg-surface-900 overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-full md:w-80 lg:w-96 bg-surface-0 dark:bg-surface-800 border-r border-surface-200 dark:border-surface-700 flex flex-col h-full transition-all duration-300" :class="{'hidden md:flex': selectedChatId && isMobile, 'flex': !selectedChatId || !isMobile}">
       
-      <!-- Loading Spinner -->
-      <div v-if="chatStore.loading" class="flex items-center justify-center h-full">
-        <div class="animate-spin h-12 w-12 rounded-full border-4 border-purple-500 border-t-transparent shadow-lg"></div>
-        <span class="ml-3 text-gray-600 font-medium tracking-wide">Loading messages...</span>
+      <!-- Header -->
+      <div class="p-4 border-b border-surface-200 dark:border-surface-700 flex justify-between items-center bg-primary-50 dark:bg-primary-900/20">
+        <div class="flex items-center gap-2">
+           <Avatar icon="pi pi-user" class="mr-2" shape="circle" size="large" style="background-color: var(--p-primary-500); color: #ffffff" />
+           <span class="font-bold text-xl text-surface-900 dark:text-surface-0">Chats</span>
+        </div>
+        <div class="flex gap-2">
+            <Button icon="pi pi-plus" rounded text severity="primary" aria-label="New Chat" @click="showCreateChatDialog = true" />
+            <Button icon="pi pi-cog" rounded text severity="secondary" aria-label="Settings" @click="toggleSettingsMenu" />
+            <Menu ref="settingsMenu" :model="settingsItems" :popup="true" />
+        </div>
       </div>
 
-      <!-- Chat Messages -->     
-      <section v-else
-        v-if="chatStore.selectedChat"
-        class="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-white via-gray-50/50 to-gray-50/30"
-        ref="messagesContainer"
-      >       
-        <div
-          v-for="msg in chatStore.messages"
-          :key="msg._id"
-          :class="msg.sender._id === authStore.user._id ? 'flex justify-end' : 'flex items-start'"
-          @mouseenter="hoveredMsgId = msg._id"
-          @mouseleave="hoveredMsgId = null"
-        >
-          <!-- Outgoing Message -->
-          <template v-if="msg.sender._id === authStore.user._id">
-            <div class="flex flex-col items-end space-y-2 group">
-              <div class="flex items-center space-x-3">
-                <!-- Status Indicator -->
-                <div class="flex items-center space-x-1.5">
-                  <template v-if="msg.isRead">
-                    <span class="text-[10px] text-purple-600 opacity-80">✓✓</span>
-                  </template>
-                  <template v-else>
-                    <span class="text-xs text-amber-500 animate-pulse">🕒</span>
-                  </template>
-                </div>
-                
-                <!-- User Info -->
-                <div class="flex items-center space-x-2 order-2">
-                  <div class="w-9 h-9 flex items-center justify-center bg-gradient-to-br from-purple-600 to-blue-500 text-white rounded-xl shadow-sm">
-                    {{ getInitials(authStore.user.username) }}
-                  </div>
-                  <p class="text-xs text-gray-400">{{ authStore.user.username || authStore.user.email }}</p>
-                </div>
-              </div>
-
-              <!-- Message Bubble -->
-              <div class="relative max-w-lg">
-                <div class="bg-gradient-to-br from-purple-600 to-blue-500 text-white p-4 rounded-2xl rounded-br-none shadow-lg">
-                  <!-- Message content... -->
-                  <template v-if="msg.fileUrl">
-                    <template v-if="isImage(msg.fileUrl)">
-                      <img :src="msg.fileUrl" alt="Image" class="max-w-full rounded"/>
-                    </template>
-                    <template v-else-if="isVideo(msg.fileUrl)">
-                      <video controls class="max-w-full rounded">
-                        <source :src="msg.fileUrl" type="video/mp4"/>
-                        Your browser does not support the video tag.
-                      </video>
-                    </template>
-                    <template v-else>
-                      <a :href="msg.fileUrl" target="_blank" class="flex items-center space-x-2">                        
-                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M18 6.00002V6.75002H18.75V6.00002H18ZM15.7172 2.32614L15.6111 1.58368L15.7172 2.32614ZM4.91959 3.86865L4.81353 3.12619H4.81353L4.91959 3.86865ZM5.07107 6.75002H18V5.25002H5.07107V6.75002ZM18.75 6.00002V4.30604H17.25V6.00002H18.75ZM15.6111 1.58368L4.81353 3.12619L5.02566 4.61111L15.8232 3.0686L15.6111 1.58368ZM4.81353 3.12619C3.91638 3.25435 3.25 4.0227 3.25 4.92895H4.75C4.75 4.76917 4.86749 4.63371 5.02566 4.61111L4.81353 3.12619ZM18.75 4.30604C18.75 2.63253 17.2678 1.34701 15.6111 1.58368L15.8232 3.0686C16.5763 2.96103 17.25 3.54535 17.25 4.30604H18.75ZM5.07107 5.25002C4.89375 5.25002 4.75 5.10627 4.75 4.92895H3.25C3.25 5.9347 4.06532 6.75002 5.07107 6.75002V5.25002Z" fill="#ffffff"></path> <path d="M8 12H16" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path> <path d="M8 15.5H13.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path> <path d="M4 6V19C4 20.6569 5.34315 22 7 22H17C18.6569 22 20 20.6569 20 19V14M4 6V5M4 6H17C18.6569 6 20 7.34315 20 9V10" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path> </g></svg>
-                        <span class="text-sm text-white font-semibold">View Document</span>
-                      </a>
-                    </template>
-                  </template>
-                  <template v-else>
-                    <p class="text-sm text-white">{{formatAIResponse(msg.content, msg.iv)}}</p>
-                  </template>
-                </div>
-                
-                <!-- Timestamp -->
-                <div class="absolute -bottom-5 right-0 opacity-70">
-                  <p class="text-[10px] text-gray-400 tracking-tight">{{ formatTimestamp(msg.createdAt) }}</p>
-                </div>
-                
-                <!-- Message Options -->
-                <div v-if="hoveredMsgId === msg._id" class="absolute -top-3 -right-2">
-                  <button @click="toggleMsgMenu(msg._id)" class="p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-gray-200 hover:scale-105 transition-transform">
-                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                    </svg>
-                  </button>
-                  
-                  <!-- Options Menu -->
-                  <div v-if="msgMenuId === msg._id" class="absolute right-0 mt-1 w-32 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/60 z-10 overflow-hidden">
-                    <ul class="py-1 text-sm">
-                      <li>
-                        <button @click="openEditModal(msg)" class="w-full px-3 py-2 hover:bg-gray-50/80 transition-colors">
-                          ✏️ Edit
-                        </button>
-                      </li>
-                      <li>
-                        <button @click="confirmDelete(msg._id)" class="w-full px-3 py-2 text-red-600 hover:bg-gray-50/80 transition-colors">
-                          🗑️ Delete
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- Incoming Message -->
-          <template v-else>
-            <div class="flex flex-col space-y-2 group max-w-[85%]">
-              <!-- Sender Info -->
-              <div class="flex items-center space-x-2">
-                <div class="w-9 h-9 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-50 text-gray-600 rounded-xl border border-gray-200/60 shadow-sm">
-                  {{ getInitials(msg.sender.username) }}
-                </div>
-                <p class="text-xs text-gray-500">{{ msg.sender.username || msg.sender.email }}</p>
-              </div>
-
-              <!-- Message Bubble -->
-              <div class="relative">
-                <div class="bg-white border border-gray-200/60 p-4 rounded-2xl rounded-bl-none shadow-sm">
-                  <!-- Message content... -->
-                  <div class="flex items-start space-x-2">
-                    <div 
-                      class="p-3 rounded-lg shadow max-w-xs"
-                      :class="{ 'bg-white': !isAudio(msg.fileUrl) }"
-                    >
-                      <template v-if="msg.fileUrl">
-                        <template v-if="isImage(msg.fileUrl)">
-                          <img :src="msg.fileUrl" alt="Image" class="max-w-full rounded"/>
-                        </template>
-                        <template v-else-if="isVideo(msg.fileUrl)">
-                          <video controls class="max-w-full rounded">
-                            <source :src="msg.fileUrl" type="video/mp4"/>
-                            Your browser does not support the video tag.
-                          </video>
-                        </template>
-                        <template v-else-if="isAudio(msg.fileUrl)">
-                          <audio controls class="w-full">
-                            <source :src="msg.fileUrl" type="audio/mpeg"/>
-                            Your browser does not support the audio element.
-                          </audio>
-                        </template>
-                        <template v-else>
-                          <a :href="msg.fileUrl" target="_blank" class="flex items-center space-x-2">
-                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                              <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                              <g id="SVGRepo_iconCarrier">
-                                <path d="M18 6.00002V6.75002H18.75V6.00002H18ZM15.7172 2.32614L15.6111 1.58368L15.7172 2.32614ZM4.91959 3.86865L4.81353 3.12619H4.81353L4.91959 3.86865ZM5.07107 6.75002H18V5.25002H5.07107V6.75002ZM18.75 6.00002V4.30604H17.25V6.00002H18.75ZM15.6111 1.58368L4.81353 3.12619L5.02566 4.61111L15.8232 3.0686L15.6111 1.58368ZM4.81353 3.12619C3.91638 3.25435 3.25 4.0227 3.25 4.92895H4.75C4.75 4.76917 4.86749 4.63371 5.02566 4.61111L4.81353 3.12619ZM18.75 4.30604C18.75 2.63253 17.2678 1.34701 15.6111 1.58368L15.8232 3.0686C16.5763 2.96103 17.25 3.54535 17.25 4.30604H18.75ZM5.07107 5.25002C4.89375 5.25002 4.75 5.10627 4.75 4.92895H3.25C3.25 5.9347 4.06532 6.75002 5.07107 6.75002V5.25002Z" fill="#1C274D"></path>
-                                <path d="M8 12H16" stroke="#1C274D" stroke-width="1.5" stroke-linecap="round"></path>
-                                <path d="M8 15.5H13.5" stroke="#1C274D" stroke-width="1.5" stroke-linecap="round"></path>
-                                <path d="M4 6V19C4 20.6569 5.34315 22 7 22H17C18.6569 22 20 20.6569 20 19V14M4 6V5M4 6H17C18.6569 6 20 7.34315 20 9V10" stroke="#1C274D" stroke-width="1.5" stroke-linecap="round"></path>
-                              </g>
-                            </svg>
-                            <span class="text-sm text-blue-500">View Document</span>
-                          </a>
-                        </template>
-                      </template>
-                      <template v-else>
-                        <p class="text-sm text-gray-800">{{ formatAIResponse(msg.content) }}</p>
-                      </template>
+      <!-- Chat List -->
+      <div class="flex-1 overflow-y-auto">
+        <div v-if="chatStore.loading" class="flex justify-center p-4">
+            <ProgressSpinner style="width: 30px; height: 30px" />
+        </div>
+        <div v-else-if="sortedChats.length === 0" class="p-4 text-center text-surface-500">
+            No chats yet. Start a new one!
+        </div>
+        <ul v-else class="list-none p-0 m-0">
+            <li v-for="chat in sortedChats" :key="chat._id" 
+                class="p-4 cursor-pointer border-b border-surface-100 dark:border-surface-700 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors relative group"
+                :class="{'bg-primary-50 dark:bg-primary-900/30': chatStore.selectedChat?._id === chat._id}"
+            >
+                <div class="flex items-center gap-3" @click="onSelectChat(chat)">
+                    <div class="relative">
+                        <Avatar :label="getChatAvatarLabel(chat)" shape="circle" size="large" 
+                            :style="{ 'background-color': chat.isAIChat ? 'var(--p-cyan-500)' : 'var(--p-primary-500)', color: '#ffffff' }"
+                        >
+                            <template #icon v-if="chat.isAIChat">
+                                <i class="pi pi-sparkles"></i>
+                            </template>
+                        </Avatar>
+                        <Badge v-if="getOnlineStatus(chat)" severity="success" class="absolute bottom-0 right-0 w-3 h-3 p-0 min-w-0 rounded-full border-2 border-white dark:border-surface-800"></Badge>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">{{ formatTimestamp(msg.createdAt) }}</p>
-                  </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline mb-1">
+                            <span class="font-semibold text-surface-900 dark:text-surface-0 truncate">
+                                {{ getChatName(chat) }}
+                            </span>
+                            <span class="text-xs text-surface-500">{{ formatTime(chat.lastMessage?.createdAt || chat.updatedAt) }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                             <p class="text-sm text-surface-600 dark:text-surface-400 truncate m-0 max-w-[180px]">
+                                <span v-if="chat.lastMessage?.sender?._id === authStore.user._id">You: </span>
+                                {{ getMessagePreview(chat.lastMessage) }}
+                            </p>
+                            <!-- <Badge value="2" severity="danger" class="ml-2"></Badge> -->
+                        </div>
+                    </div>
                 </div>
                 
-                <!-- Timestamp -->
-                <div class="absolute -bottom-5 left-0 opacity-70">
-                  <p class="text-[10px] text-gray-400 tracking-tight">{{ formatTimestamp(msg.createdAt) }}</p>
-                </div>
-              </div>
-            </div>
-          </template>
-        </div>
-
-        <!-- Typing Indicator -->
-        <div v-if="typingIndicator" class="flex items-center space-x-2 text-gray-500 animate-fade-in">
-          <div class="flex space-x-1">
-            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
-          </div>
-          <span class="text-sm italic">Typing...</span>
-        </div>
-              
-        <!-- Media upload progress bar -->
-        <div v-if="chatStore.mediaUploadProgress > 0 && chatStore.mediaUploadProgress < 100" class="progress-container">
-          <p>Uploading: {{ chatStore.mediaUploadProgress }}%</p>
-          <div class="progress-bar">
-            <div
-              class="progress"
-              :style="{ width: chatStore.mediaUploadProgress + '%' }"
-            ></div>
-          </div>
-        </div>
-      
-      </section>   
-
-      <!-- Chat Input -->
-      <footer v-if="chatStore.selectedChat" class="p-4 border-t border-gray-200/60 bg-white/90 backdrop-blur-sm">
-        <!-- AI Mode Indicator -->
-        <transition name="slide-down">
-          <div v-if="newMessage.toLowerCase().startsWith('/ai')" class="mb-3 flex items-center space-x-2 bg-gradient-to-r from-purple-50 to-blue-50 p-2 rounded-lg">
-            <div class="w-7 h-7 flex items-center justify-center">
-              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                <g id="SVGRepo_iconCarrier">
-                  <path d="M9 15C8.44771 15 8 15.4477 8 16C8 16.5523 8.44771 17 9 17C9.55229 17 10 16.5523 10 16C10 15.4477 9.55229 15 9 15Z" fill="#0F0F0F"></path>
-                  <path d="M14 16C14 15.4477 14.4477 15 15 15C15.5523 15 16 15.4477 16 16C16 16.5523 15.5523 17 15 17C14.4477 17 14 16.5523 14 16Z" fill="#0F0F0F"></path>
-                  <path fill-rule="evenodd" clip-rule="evenodd" d="M12 1C10.8954 1 10 1.89543 10 3C10 3.74028 10.4022 4.38663 11 4.73244V7H6C4.34315 7 3 8.34315 3 10V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V10C21 8.34315 19.6569 7 18 7H13V4.73244C13.5978 4.38663 14 3.74028 14 3C14 1.89543 13.1046 1 12 1ZM5 10C5 9.44772 5.44772 9 6 9H7.38197L8.82918 11.8944C9.16796 12.572 9.86049 13 10.618 13H13.382C14.1395 13 14.832 12.572 15.1708 11.8944L16.618 9H18C18.5523 9 19 9.44772 19 10V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20V10ZM13.382 11L14.382 9H9.61803L10.618 11H13.382Z" fill="#0F0F0F"></path>
-                  <path d="M1 14C0.447715 14 0 14.4477 0 15V17C0 17.5523 0.447715 18 1 18C1.55228 18 2 17.5523 2 17V15C2 14.4477 1.55228 14 1 14Z" fill="#0F0F0F"></path>
-                  <path d="M22 15C22 14.4477 22.4477 14 23 14C23.5523 14 24 14.4477 24 15V17C24 17.5523 23.5523 18 23 18C22.4477 18 22 17.5523 22 17V15Z" fill="#0F0F0F"></path>
-                </g>
-              </svg>
-            </div>
-            <p class="text-xs font-medium mt-2">AI Assistant Activated</p>
-          </div>
-        </transition>
-
-        <div class="flex items-center space-x-3">
-          <!-- Record Button -->
-          <div class="relative">
-            <button v-if="!chatStore.selectedChat.isAIChat"
-              @mousedown="startAudio" 
-              @mouseup="stopAudio"
-              @touchstart="startAudio"
-              @touchend="stopAudio"
-              :class="[recording ? 'bg-red-500 scale-110' : 'bg-gray-100 hover:bg-gray-200']"
-              class="p-2.5 rounded-xl transition-all duration-200 ease-out shadow-sm"
-            >
-              <span class="text-lg">{{ recording ? '⏹' : '🎙' }}</span>
-            </button>
-            <div v-if="recording" class="absolute -top-2 -right-2">
-              <div class="w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
-            </div>
-          </div>
-
-          <!-- Message Input -->
-          <input
-            v-model="newMessage"
-            @keydown="startTyping"
-            @keyup="stopTyping"
-            @keyup.enter="sendMessage"
-            type="text"
-            placeholder="Type your message..."
-            class="flex-1 p-3.5 border-2 border-gray-200/70 rounded-xl focus:outline-none focus:border-purple-400/80 focus:ring-2 focus:ring-purple-100 transition-all placeholder-gray-400"
-          />
-
-          <!-- File Upload -->
-          <input type="file" @change="handleFileUpload" class="hidden" ref="fileInput"/>
-          <button v-if="!chatStore.selectedChat.isAIChat"
-            @click="triggerFileInput"
-            class=" cursor-pointer p-2.5 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl shadow-sm hover:shadow-md hover:scale-[1.02] transition-all"
-          >
-            <svg class="w-5 h-5" viewBox="0 0 28 28" fill="currentColor">
-              <!-- SVG paths from original -->
-              <svg class="w-5 h-5" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M12.4797 4.15793C14.6095 0.833113 19.0267 -0.132589 22.3457 2.00098C25.6648 4.13454 26.6288 8.55944 24.4989 11.8843L22.6498 10.6956C24.1243 8.39379 23.4569 5.3304 21.1591 3.85332C18.8614 2.37624 15.8033 3.0448 14.3288 5.3466L12.4797 4.15793Z" fill="#ffffff"></path><path d="M14.3278 5.34752L5.1311 19.7042C4.14959 21.2384 4.5946 23.2789 6.12591 24.263C7.65789 25.2475 9.69685 24.8018 10.68 23.2674L13.0534 19.5629L13.0519 19.5619L18.9849 10.3002L18.9863 10.3012C19.4777 9.53391 19.2553 8.51284 18.4894 8.0205C17.7234 7.52814 16.7041 7.751 16.2126 8.51826L16.2111 8.51733L11.5 16.001C11.2118 16.4509 10.6138 16.5814 10.1643 16.2925L9.94284 16.1501C9.49339 15.8612 9.36268 15.2622 9.65088 14.8123L14.3621 7.32857L14.3635 7.3295C15.5104 5.53929 17.8888 5.01934 19.676 6.16816C21.4631 7.317 21.9822 9.69964 20.8354 11.4899L20.8339 11.489L18.4613 15.1927L18.4632 15.1939L12.5297 24.4564C10.891 27.0135 7.49232 27.756 4.93909 26.1152C2.38578 24.4743 1.64432 21.071 3.28299 18.5136L12.4787 4.15885L14.3278 5.34752Z" fill="#ffffff"></path><path d="M15.4516 23.7222C15.0022 23.4333 14.8715 22.8343 15.1597 22.3844L22.6473 10.6957L24.4965 11.8844L17.0088 23.5731C16.7206 24.023 16.1226 24.1535 15.6731 23.8646L15.4516 23.7222Z" fill="#ffffff"></path></g></svg>
-            </svg>
-          </button>
-
-          <!-- Send Button -->
-          <button
-            @click="sendMessage"
-            class="cursor-pointer p-3 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Recording Indicator -->
-        <transition name="fade">
-          <div v-if="recording" class="mt-3 flex items-center justify-between bg-white/95 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-gray-200/60">
-            <div class="flex items-center space-x-2">
-              <div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></div>
-              <span class="text-sm text-gray-600 font-medium">{{ recordingTime }}s</span>
-            </div>
-            <button 
-              @click="cancelRecording"
-              class="text-sm bg-gradient-to-br from-red-500 to-rose-600 text-white px-3 py-1 rounded-lg hover:shadow-md transition-shadow"
-            >
-              Cancel
-            </button>
-          </div>
-        </transition>
-
-        <!-- Sending Status -->
-        <transition name="fade">
-          <div v-if="sendingVoiceNote" class="mt-3 flex items-center space-x-2 text-blue-600">
-            <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-            <span class="text-sm font-medium">Sending voice note...</span>
-          </div>
-        </transition>
-      </footer>
-
-      <!-- Placeholder if no chat is selected -->
-      <template v-else>
-        <div class="flex-1 flex items-center justify-center bg-white">
-          <p class="text-gray-500 text-lg">Select a chat to start messaging</p>
-        </div>
-      </template>
-    </main>
-
-    <!-- Create Chat Modal -->
-    <transition name="fade">
-      <div
-        v-if="showCreateChatModal"
-        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-      >
-        <div class="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-          <div class="p-6 border-b border-gray-200/60">
-            <h3 class="text-xl font-semibold text-gray-800">Create New Chat</h3>
-          </div>
-
-          <div class="p-6">
-            <input
-              v-model="newChatEmails"
-              placeholder="Enter user emails (comma separated)"
-              class="w-full p-3 border-2 border-gray-200/70 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all placeholder-gray-400"
-            />
-
-            <label class="flex items-center space-x-3 mt-4 p-3 hover:bg-gray-50/50 rounded-xl cursor-pointer">
-              <input 
-                type="checkbox" 
-                v-model="isGroupChat" 
-                class="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded-lg focus:ring-purple-500"
-              />
-              <span class="text-gray-700">Group Chat</span>
-            </label>
-
-            <input
-              v-if="isGroupChat"
-              v-model="groupName"
-              placeholder="Group Name"
-              class="w-full p-3 border-2 border-gray-200/70 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all placeholder-gray-400 mt-4"
-            />
-
-            <div v-if="createChatError" class="mt-4 p-3 bg-red-50/80 text-red-600 rounded-lg text-sm">
-              {{ createChatError }}
-            </div>
-          </div>
-
-          <div class="p-4 bg-gray-50/50 border-t border-gray-200/60 flex justify-end space-x-3">
-            <button
-              @click="closeCreateChatModal"
-              class="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              @click="createChat"
-              :disabled="createchatloading"
-              class="cursor-pointer px-5 py-2.5 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span v-if="createchatloading">Creating...</span>
-              <span v-else>Create Chat</span>
-            </button>
-          
-          </div>
-        </div>
+                <!-- Delete Button (shows on hover) -->
+                <Button 
+                    icon="pi pi-trash" 
+                    text 
+                    rounded 
+                    severity="danger" 
+                    size="small"
+                    class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    @click.stop="confirmDeleteChatFromList(chat)"
+                    v-tooltip.left="'Delete Chat'"
+                />
+            </li>
+        </ul>
       </div>
-    </transition>
 
-    <!-- Edit Message Modal -->
-    <transition name="fade">
-      <div 
-        v-if="showEditModal" 
-        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-      >
-        <div class="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-          <div class="p-6 border-b border-gray-200/60">
-            <h3 class="text-xl font-semibold text-gray-800">Edit Message</h3>
-          </div>
-
-          <div class="p-6">
-            <input
-              v-model="editedContent"
-              type="text"
-              class="w-full p-3 border-2 border-gray-200/70 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all placeholder-gray-400"
-              :disabled="chatStore.messageLoading"
-            />
-          </div>
-
-          <div class="p-4 bg-gray-50/50 border-t border-gray-200/60 flex justify-end space-x-3">
-            <button 
-              @click="cancelEditing" 
-              class="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all"
-              :disabled="chatStore.messageLoading"
-            >
-              Cancel
-            </button>
-            <button 
-              @click="saveEditedMessage(editingMsgId)" 
-              class="px-5 py-2.5 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center"
-              :disabled="chatStore.messageLoading"
-            >
-              <span v-if="chatStore.messageLoading" class="animate-spin mr-2">
-                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-              </span>
-              <span>Save Changes</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
-
-    <!-- Active Call UI -->
-    <div v-if="callActive" class="fixed bottom-6 left-0 right-0 flex justify-center z-50">
-      <div class="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-2xl border border-gray-200/60 flex flex-col items-center space-y-4">
-        <div class="flex items-center space-x-2">
-          <div class="w-6 h-6 bg-purple-600 rounded-full animate-pulse"></div>
-          <p class="font-semibold text-gray-700 text-lg">Live Voice Call</p>
-        </div>
-        <audio ref="remoteAudio" autoplay></audio>
-        <button 
-          @click="hangUpVoiceCall" 
-          class="px-6 py-2.5 bg-gradient-to-br from-red-500 to-rose-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center space-x-2"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-          <span>End Call</span>
-        </button>
+      <!-- Footer Actions -->
+      <div class="p-3 border-t border-surface-200 dark:border-surface-700 flex justify-around">
+          <Button label="New Chat" icon="pi pi-comment" class="w-full mr-2" @click="showCreateChatDialog = true" />
+          <Button icon="pi pi-sparkles" severity="help" aria-label="AI Chat" @click="startAIChat" :disabled="hasAIChat" v-tooltip.top="'Start AI Chat'" />
       </div>
     </div>
 
-    <!-- Incoming Call Modal -->
-    <transition name="fade">
-      <div v-if="incomingCall" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50">
-        <div class="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden w-full max-w-md">
-          <div class="p-8 text-center space-y-6">
-            <div class="space-y-2">
-              <div class="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                </svg>
-              </div>
-              <h2 class="text-2xl font-bold text-gray-800">Incoming Call</h2>
-              <p class="text-gray-600">From {{ incomingCall.callerName }}</p>
-            </div>
-            
-            <div class="flex justify-center space-x-4">
-              <button
-                @click="acceptCall"
-                class="px-8 py-3 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center space-x-2"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span>Accept</span>
-              </button>
-              <button
-                @click="declineCall"
-                class="px-8 py-3 bg-gradient-to-br from-red-500 to-rose-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center space-x-2"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-                <span>Decline</span>
-              </button>
-            </div>
-          </div>
+    <!-- Chat Area -->
+    <div class="flex-1 flex flex-col h-full bg-surface-50 dark:bg-surface-900 relative transition-all duration-300" :class="{'hidden md:flex': !selectedChatId && isMobile, 'flex': selectedChatId || !isMobile}">
+        
+        <!-- No Chat Selected State -->
+        <div v-if="!chatStore.selectedChat" class="flex-1 flex flex-col items-center justify-center text-surface-400">
+            <i class="pi pi-comments text-6xl mb-4"></i>
+            <p class="text-xl">Select a chat to start messaging</p>
         </div>
-      </div>
-    </transition>
 
-    <!-- Call Duration Indicator -->
-    <transition name="slide-up">
-      <div v-if="chatStore.callActive" class="fixed bottom-6 right-6 bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-xl border border-gray-200/60 flex items-center space-x-4">
-        <div class="flex items-center space-x-2">
-          <div class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
-          <span class="font-medium text-gray-700">{{ chatStore.callDuration }}s</span>
+        <template v-else>
+            <!-- Chat Header -->
+            <div class="p-3 border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 flex justify-between items-center shadow-sm z-10">
+                <div class="flex items-center gap-3">
+                    <Button icon="pi pi-arrow-left" text rounded class="md:hidden" @click="clearSelection" />
+                    <Avatar :label="getChatAvatarLabel(chatStore.selectedChat)" shape="circle" 
+                        :style="{ 'background-color': chatStore.selectedChat.isAIChat ? 'var(--p-cyan-500)' : 'var(--p-primary-500)', color: '#ffffff' }"
+                    >
+                         <template #icon v-if="chatStore.selectedChat.isAIChat">
+                                <i class="pi pi-sparkles"></i>
+                        </template>
+                    </Avatar>
+                    <div class="flex flex-col">
+                        <span class="font-bold text-surface-900 dark:text-surface-0">{{ getChatName(chatStore.selectedChat) }}</span>
+                        <span class="text-xs text-surface-500 flex items-center gap-1">
+                            <span v-if="isUserOnline" class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                            {{ isUserOnline ? 'Online' : lastSeenFormatted }}
+                        </span>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <Button v-if="!chatStore.selectedChat.isAIChat" icon="pi pi-phone" text rounded severity="secondary" @click="startVoiceCall" />
+                    <Button icon="pi pi-ellipsis-v" text rounded severity="secondary" @click="toggleChatMenu" />
+                    <Menu ref="chatMenu" :model="chatMenuItems" :popup="true" />
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="messagesContainer">
+                 <div v-if="chatStore.loading" class="flex justify-center mt-4">
+                    <ProgressSpinner style="width: 40px; height: 40px" />
+                </div>
+                
+                <template v-for="(msg, index) in chatStore.messages" :key="msg._id">
+                    <!-- Date Separator (Optional - can implement logic later) -->
+                    
+                    <div class="flex w-full" :class="isMyMessage(msg) || msg.isAI ? 'justify-end' : 'justify-start'">
+                        <div class="max-w-[85%] md:max-w-[70%] flex flex-col" :class="isMyMessage(msg) || msg.isAI ? 'items-end' : 'items-start'">
+                            
+                            <!-- Sender Name (Group Chat only) -->
+                            <span v-if="chatStore.selectedChat.isGroupChat && !isMyMessage(msg) && !msg.isAI" class="text-xs text-surface-500 ml-1 mb-1">
+                                {{ msg.sender.username }}
+                            </span>
+
+                            <!-- Message Bubble -->
+                            <div class="p-3 rounded-2xl shadow-sm relative group text-sm md:text-base break-words"
+                                :class="[
+                                    msg.isLoading
+                                        ? 'bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 text-purple-900 dark:text-purple-100 rounded-tl-none animate-pulse'
+                                        : msg.isAI
+                                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-tr-none'
+                                        : isMyMessage(msg) 
+                                        ? 'bg-primary-500 text-white rounded-tr-none' 
+                                        : 'bg-white dark:bg-surface-800 text-gray-900 dark:text-surface-0 border border-surface-200 dark:border-surface-700 rounded-tl-none'
+                                ]"
+                            >
+                                <!-- Loading Indicator -->
+                                <div v-if="msg.isLoading" class="flex items-center gap-2">
+                                    <i class="pi pi-spin pi-spinner"></i>
+                                    <span>{{ msg.content }}</span>
+                                </div>
+                                
+                                <!-- Text Content -->
+                                <div v-else-if="!msg.fileUrl" class="whitespace-pre-wrap">{{ formatAIResponse(msg.content) }}</div>
+
+                                <!-- Media Content -->
+                                <div v-else class="flex flex-col gap-2">
+                                    <Image v-if="isImage(msg.fileUrl)" :src="msg.fileUrl" alt="Image" preview width="250" class="rounded-lg overflow-hidden" />
+                                    <video v-else-if="isVideo(msg.fileUrl)" controls class="max-w-full rounded-lg" style="max-height: 300px;">
+                                        <source :src="msg.fileUrl" type="video/mp4"/>
+                                        Your browser does not support the video tag.
+                                    </video>
+                                    <audio v-else-if="isAudio(msg.fileUrl)" controls class="w-64" style="background: transparent;">
+                                        <source :src="msg.fileUrl" type="audio/mpeg"/>
+                                    </audio>
+                                    <a v-else :href="msg.fileUrl" target="_blank" class="flex items-center gap-2 underline" :class="isMyMessage(msg) ? 'text-white' : 'text-primary-600'">
+                                        <i class="pi pi-file"></i>
+                                        <span>Download File</span>
+                                    </a>
+                                </div>
+
+                                <!-- Message Meta (Time & Status) -->
+                                <div v-if="!msg.isLoading" class="flex items-center justify-end gap-1 mt-1 opacity-70 text-[10px]">
+                                    <span>{{ formatTime(msg.createdAt) }}</span>
+                                    <i v-if="isMyMessage(msg)" class="pi" :class="msg.isRead ? 'pi-check-circle' : 'pi-check'"></i>
+                                </div>
+
+                                <!-- Context Menu Trigger (Hover) - Only for own messages -->
+                                <Button 
+                                    v-if="isMyMessage(msg) && !msg.isAI && !msg.isLoading"
+                                    icon="pi pi-angle-down" 
+                                    text rounded size="small"
+                                    class="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 -mt-2 bg-surface-0/50 dark:bg-surface-900/50 shadow-sm"
+                                    @click="(event) => toggleMessageMenu(event, msg)"
+                                    style="width: 1.5rem; height: 1.5rem; padding: 0;"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                
+                <!-- Typing Indicator -->
+                <div v-if="typingIndicator" class="flex items-center gap-2 text-surface-500 text-sm ml-2">
+                    <div class="flex gap-1">
+                        <span class="w-2 h-2 bg-surface-400 rounded-full animate-bounce"></span>
+                        <span class="w-2 h-2 bg-surface-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                        <span class="w-2 h-2 bg-surface-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
+                    </div>
+                    <span>Typing...</span>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-3 bg-surface-0 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700">
+                <!-- AI Mode Banner -->
+                <div v-if="isAIMode" class="mb-2 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300 p-2 rounded-lg text-xs flex items-center gap-2">
+                    <i class="pi pi-sparkles"></i>
+                    <span>AI Assistant Active - Type your message after /ai</span>
+                </div>
+
+                <!-- Upload Progress -->
+                <div v-if="chatStore.mediaUploadProgress > 0" class="mb-2 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs text-blue-700 dark:text-blue-300">Uploading...</span>
+                        <span class="text-xs text-blue-700 dark:text-blue-300">{{ chatStore.mediaUploadProgress }}%</span>
+                    </div>
+                    <div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-1.5">
+                        <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" :style="{ width: chatStore.mediaUploadProgress + '%' }"></div>
+                    </div>
+                </div>
+
+                <div class="flex items-end gap-2">
+                    <Button v-if="!chatStore.selectedChat.isAIChat" icon="pi pi-plus" text rounded severity="secondary" @click="toggleUploadMenu" />
+                    <Menu ref="uploadMenu" :model="uploadMenuItems" :popup="true" />
+                    <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload" accept="image/*,video/*,.pdf,.doc,.docx" />
+                    
+                    <div class="flex-1 relative">
+                        <Textarea 
+                            v-model="newMessage" 
+                            autoResize 
+                            rows="1" 
+                            :placeholder="chatStore.selectedChat.isAIChat ? 'Ask AI anything...' : 'Type a message or /ai for AI help...'" 
+                            class="w-full max-h-32 !py-3 !px-4 !rounded-2xl"
+                            @keydown="onTyping"
+                            @keydown.enter.prevent="sendMessage"
+                        />
+                    </div>
+
+                    <Button v-if="!newMessage && !chatStore.selectedChat.isAIChat" 
+                        :icon="recording ? 'pi pi-stop' : 'pi pi-microphone'" 
+                        rounded 
+                        :severity="recording ? 'danger' : 'secondary'" 
+                        @click="toggleRecording"
+                        :class="{'animate-pulse': recording}"
+                    />
+                    <Button v-else icon="pi pi-send" rounded severity="primary" @click="sendMessage" />
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Create Chat Dialog -->
+    <Dialog v-model:visible="showCreateChatDialog" modal header="New Chat" :style="{ width: '25rem' }">
+        <span class="text-surface-500 dark:text-surface-400 block mb-4">Enter email addresses to start a chat.</span>
+        <div class="flex flex-col gap-4">
+            <div>
+                <label for="emails" class="font-semibold w-24">Emails</label>
+                <InputText id="emails" v-model="newChatEmails" class="w-full mt-1" placeholder="email@example.com, ..." />
+                <small class="text-surface-500">Comma separated for multiple users</small>
+            </div>
+            <div class="flex items-center gap-2">
+                <Checkbox v-model="isGroupChat" binary inputId="groupChat" />
+                <label for="groupChat">Group Chat</label>
+            </div>
+            <div v-if="isGroupChat">
+                <label for="groupName" class="font-semibold">Group Name</label>
+                <InputText id="groupName" v-model="groupName" class="w-full mt-1" />
+            </div>
         </div>
-        <button 
-          @click="chatStore.hangUpVoiceCall" 
-          class="px-3 py-1.5 bg-gradient-to-br from-red-500 to-rose-600 text-white rounded-lg hover:shadow-md transition-all"
-        >
-          End Call
-        </button>
-      </div>
-    </transition>
+        <div class="flex justify-end gap-2 mt-6">
+            <Button type="button" label="Cancel" severity="secondary" @click="showCreateChatDialog = false"></Button>
+            <Button type="button" label="Create" @click="createChat" :loading="createchatloading"></Button>
+        </div>
+    </Dialog>
 
+    <!-- Edit Message Dialog -->
+    <Dialog v-model:visible="showEditDialog" modal header="Edit Message" :style="{ width: '25rem' }">
+        <div class="flex flex-col gap-4">
+            <Textarea v-model="editedContent" rows="3" autoResize class="w-full" />
+        </div>
+        <div class="flex justify-end gap-2 mt-6">
+            <Button type="button" label="Cancel" severity="secondary" @click="showEditDialog = false"></Button>
+            <Button type="button" label="Save" @click="saveEditedMessage" :loading="chatStore.messageLoading"></Button>
+        </div>
+    </Dialog>
+
+    <!-- Message Context Menu -->
+    <Menu ref="messageMenu" :model="messageMenuItems" :popup="true" />
+
+    <!-- Incoming Call Dialog -->
+    <Dialog v-model:visible="showIncomingCallDialog" modal :closable="false" :style="{ width: '20rem' }" class="text-center">
+        <template #header>
+            <div class="w-full flex justify-center">
+                 <Avatar icon="pi pi-phone" size="xlarge" shape="circle" class="bg-primary-100 text-primary-600" />
+            </div>
+        </template>
+        <div class="flex flex-col items-center mb-6">
+            <h3 class="m-0 text-xl font-bold">Incoming Call</h3>
+            <p class="text-surface-500 m-0">{{ incomingCall?.callerName || 'Unknown' }}</p>
+        </div>
+        <div class="flex justify-center gap-4">
+            <Button icon="pi pi-times" rounded severity="danger" size="large" @click="declineCall" />
+            <Button icon="pi pi-check" rounded severity="success" size="large" @click="acceptCall" />
+        </div>
+    </Dialog>
+
+    <!-- Active Call Overlay -->
+    <div v-if="chatStore.callActive" class="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-surface-900 text-white p-4 rounded-xl shadow-xl flex items-center gap-4 transition-all duration-300">
+        <div class="flex flex-col">
+            <span class="font-bold text-sm">In Call</span>
+            <span class="text-xs opacity-80">{{ formatDuration(chatStore.callDuration) }}</span>
+        </div>
+        <Button icon="pi pi-phone-off" rounded severity="danger" @click="hangUpVoiceCall" />
+        <audio ref="remoteAudio" autoplay class="hidden"></audio>
+    </div>
 
   </div>
 </template>
 
-<script>
-import { useChatStore } from "../stores/chat";
-import { useAuthStore } from "../stores/auth";
-import { ref, computed, onMounted, onUnmounted, onBeforeUnmount, nextTick, watch } from "vue";
-import { useToast } from 'vue-toast-notification';
-import 'vue-toast-notification/dist/theme-sugar.css';
+<script setup>
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { useChatStore } from '../stores/chat';
+import { useAuthStore } from '../stores/auth';
+import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 
- 
+// PrimeVue Components
+import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import Textarea from 'primevue/textarea';
+import Avatar from 'primevue/avatar';
+import Menu from 'primevue/menu';
+import Dialog from 'primevue/dialog';
+import Badge from 'primevue/badge';
+import Checkbox from 'primevue/checkbox';
+import ProgressSpinner from 'primevue/progressspinner';
+import Image from 'primevue/image';
 
-export default {
+const chatStore = useChatStore();
+const authStore = useAuthStore();
+const toast = useToast();
+const confirm = useConfirm();
 
-  setup() {
-    const chatStore = useChatStore();
-    const authStore = useAuthStore();
-    const toast = useToast();
+// State
+const showCreateChatDialog = ref(false);
+const newChatEmails = ref('');
+const isGroupChat = ref(false);
+const groupName = ref('');
+const createchatloading = ref(false);
 
-    // Reactive state
-    const showCreateChatModal = ref(false);
-    const newChatEmails = ref("");
-    const isGroupChat = ref(false);
-    const groupName = ref("");
-    const createChatError = ref("");
-    const newMessage = ref("");
-    const onlineUsers = ref([]);
-    const showSettings = ref(false);
-    let typingTimeout;
-    const messagesContainer = ref(null);
+const newMessage = ref('');
+const messagesContainer = ref(null);
+const fileInput = ref(null);
 
-    // Reactive variables for editing/deleting messages
-    const hoveredMsgId = ref(null);
-    const msgMenuId = ref(null);
-    const editingMsgId = ref(null);
-    const editedContent = ref("");
-    const showEditModal = ref(false);
+const showEditDialog = ref(false);
+const editedContent = ref('');
+const editingMsgId = ref(null);
 
-    //recording media variables
-    const recording = ref(false);
-    const recordingTime = ref(0);
-    const sendingVoiceNote = ref(false);
-    let recordingInterval = null;
-    const mediaUploadProgress = ref(0);
+const settingsMenu = ref(null);
+const chatMenu = ref(null);
+const messageMenu = ref(null);
+const uploadMenu = ref(null);
+const selectedMessage = ref(null);
 
-    const remoteAudio = ref(null);
-    const incomingCall = ref(null); 
-    
-    recording.value = chatStore.recording;
-    mediaUploadProgress.value = chatStore.mediaUploadProgress;  
+const isMobile = ref(window.innerWidth < 768);
+const selectedChatId = computed(() => chatStore.selectedChat?._id);
 
-    const isCollapsed = ref(false);
-    const isMobileMenuOpen = ref(false);
-    const sidebarRef = ref(null);
-        
-    //upload
-    const fileInput = ref(null);
+// Recording
+const recording = ref(false);
+const recordingInterval = ref(null);
 
-    const checkScreenSize = () => {
-        if (window.innerWidth < 768) {
-          isCollapsed.value = false;
-          isMobileMenuOpen.value = false;
-        }
-      };
+// Call
+const remoteAudio = ref(null);
+const showIncomingCallDialog = computed(() => !!incomingCall.value);
+const incomingCall = ref(null);
 
-      const toggleSidebar = () => {
-        if (window.innerWidth < 768) {
-          isMobileMenuOpen.value = !isMobileMenuOpen.value;
-        } else {
-          isCollapsed.value = !isCollapsed.value;
-        }
-      };
-
-      const openMobileMenu = () => {
-        isMobileMenuOpen.value = true;
-      };
-
-      const closeMobileMenu = () => {
-        isMobileMenuOpen.value = false;
-      };
-
-      // Touch gesture handling
-      let touchStartX = 0;
-      let touchEndX = 0;
-
-      const handleTouchStart = (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-      };
-
-      const handleTouchEnd = (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        if (touchStartX - touchEndX > 50) {
-          closeMobileMenu();
-        }
-      };
-
-    onMounted(() => {
-      if (!authStore.user) {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          authStore.user = JSON.parse(storedUser);
-        }
-      }
-      console.log("Chat view mounted. User:", authStore.user);
-      chatStore.fetchUserChats();
-      const userId = authStore.user?._id || localStorage.getItem("userId");
-      if (userId) {
-        chatStore.connectSocket(userId);
-        chatStore.socket.on("updateOnlineUsers", (users) => {
-          onlineUsers.value = users;
-        });
-        // Check if socket is ready; if not, watch until it is
-        if (chatStore.socket) {
-          attachIncomingCallListener(chatStore.socket);
-        } else {
-          const unwatch = watch(
-            () => chatStore.socket,
-            (newSocket) => {
-              if (newSocket) {
-                attachIncomingCallListener(newSocket);
-                unwatch(); // Stop watching once the listener is attached
-              }
-            }
-          );
-        }
-      }
-
-      window.addEventListener('resize', checkScreenSize);
-        sidebarRef.value?.addEventListener('touchstart', handleTouchStart);
-        sidebarRef.value?.addEventListener('touchend', handleTouchEnd);
-      });
-
-    onBeforeUnmount(() => {
-      window.removeEventListener('resize', checkScreenSize);
-      sidebarRef.value?.removeEventListener('touchstart', handleTouchStart);
-      sidebarRef.value?.removeEventListener('touchend', handleTouchEnd);
-    });
-
-    onUnmounted(() => {
-      if (chatStore.socket && authStore.user) {
-        chatStore.socket.emit("userDisconnected", { userId: authStore.user._id });
-        chatStore.socket.off("incomingVoiceCall");
-      }
-    });
-
-    const scrollToBottom = async () => {
-      await nextTick(); // wait for DOM update
-      if (messagesContainer.value) {
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-        console.log("[scrollToBottom] Scrolled to bottom");
-      }
-    };
-
-    // Watch the messages array for changes (new message added, etc.)
-    watch(
-      () => chatStore.messages,
-      () => {
-        scrollToBottom();
-      },
-      { deep: true }
-    );
-
-    // Also, when the selected chat changes, scroll to bottom:
-    watch(
-      () => chatStore.selectedChat,
-      () => {
-        scrollToBottom();
-      }
-    );
-
-    const selectedChatAvatar = computed(() => {
-      if (!chatStore.selectedChat) return "https://via.placeholder.com/40";
-      if (!chatStore.selectedChat.isGroupChat) {
-        const other = chatStore.selectedChat.participants.find(
-          (p) => p._id !== authStore.user._id
-        );
-        return other ? getInitials(other.email) : "https://via.placeholder.com/40";
-      }
-      return getInitials(chatStore.selectedChat.name);
-    });
-
-    const lastSeenFormatted = computed(() => {
-      if (!chatStore.selectedChat) return "";
-      const updatedChat = chatStore.chats.find(
-        (chat) => chat._id === chatStore.selectedChat._id
-      );
-      if (!updatedChat) return "Unknown";
-      const otherParticipant = updatedChat.participants.find(
-        (p) => p._id !== authStore.user?._id
-      );
-      const lastSeen =
-        (otherParticipant && otherParticipant.lastSeen) ||
-        chatStore.lastSeenMap?.[otherParticipant?._id];
-      return lastSeen ? new Date(lastSeen).toLocaleString() : "ChatterBox AI";
-    });
-
-    const isUserOnline = computed(() => {
-      if (!chatStore.selectedChat) return false;
-      const otherParticipant = chatStore.selectedChat.participants.find(
-        (p) => p._id !== authStore.user?._id
-      );
-      return otherParticipant ? onlineUsers.value.includes(otherParticipant._id) : false;
-    });
-
-    const getInitials = (str) => {
-      if (!str) return "";
-      const parts = str.split(/[\s@.]+/);
-      let initials = "";
-      for (let part of parts) {
-        if (part.length > 0) {
-          initials += part.charAt(0).toUpperCase();
-          if (initials.length === 2) break;
-        }
-      }
-      return initials;
-    };
-
-    const formatTimestamp = (timestamp) => {
-      return timestamp ? new Date(timestamp).toLocaleTimeString() : "";
-    };
-
-    const toggleSettings = () => {
-      showSettings.value = !showSettings.value;
-    };
-
-    const logout = () => {
-      authStore.logout();
-    };
-
-    const soundEnabled = computed(() => chatStore.soundEnabled);
-    const toggleSound = () => {
-      chatStore.toggleSound();
-    };
-
-    const selectChat = (chat) => {
-      chatStore.selectChat(chat);
-      scrollToBottom();
-    };
-    
-    const createchatloading = ref(false);
-
-    const createChat = async () => {
-      createChatError.value = "";
-      if (!authStore.user) {
-        console.error("User not logged in");
-        createChatError.value = "You must be logged in to create a chat.";
-        return;
-      }
-
-      const loggedInUserEmail = authStore.user.email;
-      let emails = [
-        ...new Set(
-          newChatEmails.value.split(",").map((email) => email.trim()).filter((email) => email)
-        ),
-      ];
-
-      if (!emails.length) {
-        createChatError.value = "Please enter at least one valid email.";
-        return;
-      }
-
-      if (!emails.includes(loggedInUserEmail)) {
-        emails.push(loggedInUserEmail);
-      }
-      createchatloading.value = true;
-
-      try {
-        await chatStore.createChat(emails, isGroupChat.value, groupName.value);
-        
-        // Close the modal properly after a short delay
-        setTimeout(() => {
-          closeCreateChatModal();
-          newChatEmails.value = ""; // Reset input fields
-          isGroupChat.value = false;
-          groupName.value = "";
-        }, 300); 
-        
-        await chatStore.fetchUserChats(); // Fetch chats to update the list
-      } catch (error) {
-        console.error("Chat creation error:", error);
-        if (error.response) {
-          createChatError.value = error.response.data.message || "Failed to create chat.";
-          if (error.response.data.errors) {
-            createChatError.value += "\n" + Object.values(error.response.data.errors).flat().join("\n");
-          }
-        } else {
-          createChatError.value = "Failed to create chat. Please try again.";
-        }
-      } finally {
-        createchatloading.value = false;  
-      }
-    };
-
-
-    const closeCreateChatModal = () => {
-      showCreateChatModal.value = false;
-      newChatEmails.value = "";
-      groupName.value = "";
-      createChatError.value = "";
-    };
-
-    const sendMessage = async () => {
-      console.log("Message to send:", newMessage.value);
-      const messageContent = String(newMessage.value).trim();
-      if (!messageContent) return;
-      if (!chatStore.selectedChat?._id) {
-        console.error("No chat selected. Cannot send message.");
-        return;
-      }
-
-      // If the current chat is an AI chat OR the message starts with "/ai"
-      if (
-        chatStore.selectedChat.isAIChat ||
-        messageContent.toLowerCase().startsWith("/ai")
-      ) {
-        // Remove "/ai" prefix if present
-        const aiPrompt = messageContent.toLowerCase().startsWith("/ai")
-          ? messageContent.replace(/^\/ai\s*/, "")
-          : messageContent;
-        console.log("AI prompt:", aiPrompt);
-        // Clear the input immediately
-        newMessage.value = "";
-
-        // Add a temporary loading message to the chat panel
-        const loadingId = "loading-" + Date.now().toString();
-        const loadingMessage = {
-          _id: loadingId,
-          chatId: chatStore.selectedChat._id,
-          content: "Getting AI response...",
-          sender: { _id: "ai", username: "AI Assistant" },
-          createdAt: new Date().toISOString(),
-          isRead: true,
-          isAI: true,
-          isLoading: true,
-        };
-        chatStore.messages.push(loadingMessage);
-
-        try {
-          const aiResponse = await chatStore.getAIResponse(aiPrompt);
-          if (aiResponse) {
-            // Replace the loading message with the actual AI response
-            const index = chatStore.messages.findIndex(msg => msg._id === loadingId);
-            if (index !== -1) {
-              chatStore.messages.splice(index, 1, {
-                _id: Date.now().toString(),
-                chatId: chatStore.selectedChat._id,
-                content: aiResponse,
-                sender: { _id: "ai", username: "AI Assistant" },
-                createdAt: new Date().toISOString(),
-                isRead: true,
-                isAI: true,
-              });
-            } else {
-              chatStore.messages.push({
-                _id: Date.now().toString(),
-                chatId: chatStore.selectedChat._id,
-                content: aiResponse,
-                sender: { _id: "ai", username: "AI Assistant" },
-                createdAt: new Date().toISOString(),
-                isRead: true,
-                isAI: true,
-              });
-            }
-          }
-        } catch (error) {
-          console.error("Error getting AI response:", error);
-          //toast.error("Error calling AI API");
-          // Remove the loading message if error occurs
-          chatStore.messages = chatStore.messages.filter(msg => msg._id !== loadingId);
-        }
-        return;
-  }
-
-  // Otherwise, send as a normal message.
-  console.log("Sending message:", messageContent);
-  try {
-    chatStore.stopTyping();
-    const response = await chatStore.sendMessage(messageContent);
-    if (response && response.success) {
-      console.log("Message sent successfully:", response.data);
-      //toast.success("Message sent");
+// Upload Menu Items
+const uploadMenuItems = ref([
+    { 
+        label: 'Upload Image', 
+        icon: 'pi pi-image', 
+        command: () => triggerFileUpload('image/*') 
+    },
+    { 
+        label: 'Upload Document', 
+        icon: 'pi pi-file', 
+        command: () => triggerFileUpload('.pdf,.doc,.docx,.txt') 
+    },
+    { 
+        label: 'Upload Video', 
+        icon: 'pi pi-video', 
+        command: () => triggerFileUpload('video/*') 
     }
-    newMessage.value = "";
-  } catch (error) {
-    console.error("Error sending message:", error);
-    if (error.response) {
-      console.error("Server error response:", error.response.data);
+]);
+
+// Computed
+const sortedChats = computed(() => {
+    return (chatStore.chats || []).slice().sort((a, b) => {
+        const aTime = new Date(a.lastMessage?.createdAt || a.updatedAt || a.createdAt);
+        const bTime = new Date(b.lastMessage?.createdAt || b.updatedAt || b.createdAt);
+        return bTime - aTime;
+    });
+});
+
+const isUserOnline = computed(() => {
+    if (!chatStore.selectedChat) return false;
+    if (chatStore.selectedChat.isGroupChat) return false; // Simplified for group
+    const other = chatStore.selectedChat.participants.find(p => p._id !== authStore.user?._id);
+    return other && chatStore.onlineUsers.includes(other._id);
+});
+
+const lastSeenFormatted = computed(() => {
+     if (!chatStore.selectedChat) return '';
+     const other = chatStore.selectedChat.participants.find(p => p._id !== authStore.user?._id);
+     if (!other) return '';
+     // Note: Real last seen logic would need backend support or socket event updates stored in map
+     return 'Offline'; 
+});
+
+const typingIndicator = computed(() => {
+    if (!chatStore.selectedChat) return false;
+    // Check if any user in current chat is typing (excluding self)
+    // This requires typingUsers to be a map of userId -> chatId or similar.
+    // Assuming chatStore.typingUsers is { userId: true } and we check if that user is in chat.
+    // A better structure in store would be typingUsers: { chatId: [userIds] }
+    // For now, using existing store logic:
+    return Object.keys(chatStore.typingUsers).some(userId => {
+        // Check if this user is in the current chat
+        return chatStore.selectedChat.participants.some(p => p._id === userId) && userId !== authStore.user._id;
+    });
+});
+
+const hasAIChat = computed(() => {
+    return (chatStore.chats || []).some(c => c.isAIChat);
+});
+
+const isAIMode = computed(() => {
+    return newMessage.value.toLowerCase().startsWith('/ai');
+});
+
+// Menu Items
+const settingsItems = ref([
+    { label: 'Sound', icon: 'pi pi-volume-up', command: () => chatStore.toggleSound() },
+    { label: 'Logout', icon: 'pi pi-sign-out', command: () => authStore.logout() }
+]);
+
+const chatMenuItems = computed(() => [
+    { label: 'Clear Chat', icon: 'pi pi-trash', command: () => confirmClearChat() },
+    { label: 'Delete Chat', icon: 'pi pi-times', class: 'text-red-500', command: () => confirmDeleteChat() }
+]);
+
+const messageMenuItems = computed(() => [
+    { 
+        label: 'Edit', 
+        icon: 'pi pi-pencil', 
+        visible: selectedMessage.value?.sender?._id === authStore.user?._id && !selectedMessage.value?.fileUrl,
+        command: () => openEditDialog(selectedMessage.value)
+    },
+    { 
+        label: 'Delete', 
+        icon: 'pi pi-trash', 
+        class: 'text-red-500',
+        visible: selectedMessage.value?.sender?._id === authStore.user?._id,
+        command: () => confirmDeleteMessage(selectedMessage.value)
     }
-  }
-    };
+]);
 
-    // Helper function to format AI response (removes all HTML-like tags)
-    const formatAIResponse = (input) => {
-      let str = "";
-        if (typeof input === "object" && input !== null) {
-          // If input is an object and has a content property, use that.
-          str = input.content || "";
-        } else {
-          str = String(input);
-        }      
-        const withoutChain = str.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-        return withoutChain;
-    };
-
-
-    const startAIChat = async () => {
-      try {
-        console.log('[startAIChat] Launching AI chat...');
-        const aiChat = await chatStore.createAIChat();
-        if (aiChat) {
-          await chatStore.selectChat(aiChat);
-          console.log('[startAIChat] AI chat selected:', aiChat);
-        }
-      } catch (error) {
-        console.error('[startAIChat] Error creating AI chat:', error);
-      }
-    };
-
-    const hasAIChat = computed(() => {
-      if (!authStore.user || !chatStore.chats) {
-        // console.log('[hasAIChat] No user or chats available');
-        return false;
-      }
-      // console.log('[hasAIChat] Checking for AI chat for user:', authStore.user._id);
-      // Filter chats that are marked as AI chats
-      const aiChats = chatStore.chats.filter(chat => chat.isAIChat === true);      
-      // Check if any AI chat includes the current user's ID
-      const exists = aiChats.some(chat => {
-        return chat.participants.some(participant => {
-          if (typeof participant === 'string') {
-            return participant === authStore.user._id;
-          } else if (participant && participant._id) {
-            return participant._id.toString() === authStore.user._id.toString();
-          }
-          return false;
-        });
-      });      
-      return exists;
-    });
-
-
-    const startTyping = () => {
-      chatStore.startTyping();
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        stopTyping();
-      }, 2000);
-    };
-
-    const stopTyping = () => {
-      chatStore.stopTyping();
-    };
-
-    // Message editing/deletion methods
-    const toggleMsgMenu = (msgId) => {
-      msgMenuId.value = msgMenuId.value === msgId ? null : msgId;
-    };
-
-    const openEditModal = (msg) => {
-      editingMsgId.value = msg._id;
-      editedContent.value = msg.content;
-      showEditModal.value = true;
-      msgMenuId.value = null;
-    };
-
-    const cancelEditing = () => {
-      editingMsgId.value = null;
-      editedContent.value = "";
-      showEditModal.value = false;
-    };
-
-    const saveEditedMessage = async (msgId) => {
-      try {
-        const updatedMsg = await chatStore.editMessage(msgId, editedContent.value);        
-      } catch (error) {
-        console.error("Error editing message:", error);       
-      }
-      cancelEditing();
-    };
-
-    const confirmDelete = async (msgId) => {
-      if (confirm("Are you sure you want to delete this message?")) {
-        try {
-          await chatStore.deleteMessage(msgId);          
-        } catch (error) {
-          console.error("Error deleting message:", error);          
-        }
-      }
-    };
-
-    const triggerFileInput = () => {
-      fileInput.value.click();
-    };
-
-    const handleFileUpload = async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      console.log('[handleFileUpload] File selected:', file);
-      try {
-        await chatStore.sendMediaMessage(file);
-      } catch (error) {
-        console.error('[handleFileUpload] Error sending media message:', error);
-      }
-    };
-
-    const isImage = (fileUrl) => {
-      return /\.(jpe?g|png|gif)$/i.test(fileUrl);
-    };
-
-    const isVideo = (fileUrl) => {
-      return /\.(mp4|webm|ogg)$/i.test(fileUrl);
-    }; 
-
-    const isAudio = (fileUrl) => {
-      return /\.(mp3|wav|ogg|m4a)$/i.test(fileUrl);
-    };
-
-
-    const sortedChats = computed(() => {
-      return [...chatStore.chats].sort((a, b) => {
-        const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt) : new Date(a.updatedAt || a.createdAt);
-        const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt) : new Date(b.updatedAt || b.createdAt);
-        return bTime - aTime; // Sort newest chats first
-      });
-    });
-
-
-
-    const startAudio = async () => {
-      recording.value = true;
-      recordingTime.value = 0;
-      // Start a timer that updates every second
-      recordingInterval = setInterval(() => {
-        recordingTime.value += 1;
-      }, 1000);  
-      await chatStore.startAudioRecording();      
-    };
-
-    const stopAudio = () => {
-      chatStore.stopAudioRecording();
-      // Clear the timer
-      clearInterval(recordingInterval);
-      recording.value = false;
-      
-      // Show the sending indicator
-      sendingVoiceNote.value = true;
-
-      try {
-         toast.info("Recording Done");
-        } catch (error) {
-          console.error("Error sending audio message:", error);
-        } finally {
-          // Once done, hide the sending indicator
-          sendingVoiceNote.value = false;
-        }
-    };
-
-    const cancelRecording = () => {
-      clearInterval(recordingInterval);
-      recording.value = false;
-      chatStore.stopAudioRecording();
-    };
-
-    const startVoiceCall = async () => {
-      await chatStore.startVoiceCall();
-      // If a remote audio element exists, attach the remote stream when available
-      watch(
-        () => chatStore.remoteStream,
-        (newStream) => {
-          if (newStream && remoteAudio.value) {
-            remoteAudio.value.srcObject = newStream;
-          }
-        }
-      );
-    };
-
-    const hangUpVoiceCall = async () => {
-      await chatStore.hangUpVoiceCall();
-    };
-
-     // Function to attach incoming call event listener
-    const attachIncomingCallListener = (socket) => {
-      socket.on('incomingVoiceCall', (data) => {
-        console.log("Incoming call:", data);
-        incomingCall.value = { ...data, callerName: data.callerName || 'Unknown Caller' };
-      });
-    };
-
-    const acceptCall = () => {
-      // Handle call acceptance (e.g., start the call, set up the RTCPeerConnection, etc.)
-      console.log("Call accepted");
-      incomingCall.value = null;
-      // You may call a method from chatStore to proceed with the call setup
-    };
-
-    const declineCall = () => {
-      console.log("Call declined");
-      // Optionally, emit a socket event to notify the caller
-      incomingCall.value = null;
-    };
-        
-
-    return {
-      
-      chatStore,
-      authStore,
-      showCreateChatModal,
-      newChatEmails,
-      isGroupChat,
-      groupName,
-      createChatError,
-      newMessage,
-      createChat,
-      closeCreateChatModal,
-      sendMessage,
-      startTyping,
-      selectChat,
-      typingIndicator: computed(() => Object.keys(chatStore.typingUsers).length > 0),
-      isUserOnline,
-      deleteChat: chatStore.deleteChat,
-      acceptChat: chatStore.acceptChat,
-      chatTitle: computed(() => {
-        const chat = chatStore.selectedChat;
-        if (!chat) return "";
-         if (chat.isAIChat) {
-            return "AI Chat";
-        }
-        return chat.isGroupChat
-          ? chat.name
-          : chat.participants?.filter((p) => p._id !== authStore.user?._id).map((p) => p.email).join(", ") || "Unknown Chat";
-      }),
-      lastSeenFormatted,
-      selectedChatAvatar,
-      onlineUsers,
-      getInitials,
-      formatTimestamp,
-      toggleSettings,
-      showSettings,
-      logout,
-      soundEnabled,
-      toggleSound,
-      messagesContainer,
-      hoveredMsgId,
-      msgMenuId,
-      editingMsgId,
-      openEditModal,
-      editedContent,
-      confirmDelete,
-      toggleMsgMenu,
-      showEditModal,
-      cancelEditing,
-      saveEditedMessage,
-      stopTyping,
-      triggerFileInput,
-      handleFileUpload,
-      fileInput,
-      isImage,
-      isVideo,
-      isAudio,
-      sortedChats,
-      formatAIResponse,
-      startAIChat,
-      hasAIChat,
-      startAudio,
-      stopAudio,
-      recording,
-      recordingTime,
-      sendingVoiceNote,
-      mediaUploadProgress,
-      cancelRecording,
-      startVoiceCall,
-      hangUpVoiceCall,
-      remoteAudio,
-      incomingCall,
-      acceptCall,
-      declineCall,
-      callActive: computed(() => chatStore.callActive),
-      handleTouchEnd,
-      handleTouchStart,
-      openMobileMenu,
-      handleTouchStart,
-      handleTouchEnd,
-      toggleSidebar,
-      checkScreenSize,
-      sidebarRef,
-      isMobileMenuOpen,
-      isCollapsed,
-      closeMobileMenu,
-      createchatloading
-
-    };
-  },
+// Methods
+const getChatName = (chat) => {
+    if (chat.isAIChat) return 'AI Assistant';
+    if (chat.isGroupChat) return chat.name || 'Group Chat';
+    const other = chat.participants.find(p => p._id !== authStore.user?._id);
+    return other?.username || other?.email || 'Unknown';
 };
+
+const getChatAvatarLabel = (chat) => {
+    if (chat.isAIChat) return 'AI';
+    const name = getChatName(chat);
+    return name.substring(0, 2).toUpperCase();
+};
+
+const getOnlineStatus = (chat) => {
+    if (chat.isGroupChat || chat.isAIChat) return false;
+    const other = chat.participants.find(p => p._id !== authStore.user?._id);
+    return other && chatStore.onlineUsers.includes(other._id);
+};
+
+const getMessagePreview = (msg) => {
+    if (!msg) return 'No messages yet';
+    if (msg.fileUrl) return isImage(msg.fileUrl) ? '📷 Image' : '📎 Attachment';
+    return msg.content;
+};
+
+const formatTime = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const isMyMessage = (msg) => msg.sender._id === authStore.user?._id;
+
+const isImage = (url) => /\.(jpeg|jpg|gif|png|webp)$/i.test(url);
+const isVideo = (url) => /\.(mp4|webm|ogg)$/i.test(url);
+const isAudio = (url) => /\.(mp3|wav|ogg|m4a)$/i.test(url);
+
+const formatAIResponse = (text) => {
+    // Basic cleanup if needed
+    return text;
+};
+
+// Actions
+const onSelectChat = async (chat) => {
+    await chatStore.selectChat(chat);
+    scrollToBottom();
+};
+
+const clearSelection = () => {
+    chatStore.selectedChat = null;
+};
+
+const scrollToBottom = async () => {
+    await nextTick();
+    if (messagesContainer.value) {
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    }
+};
+
+const toggleSettingsMenu = (event) => settingsMenu.value.toggle(event);
+const toggleChatMenu = (event) => chatMenu.value.toggle(event);
+const toggleMessageMenu = (event, msg) => {
+    selectedMessage.value = msg;
+    messageMenu.value.toggle(event);
+};
+
+const createChat = async () => {
+    if (!newChatEmails.value) return;
+    createchatloading.value = true;
+    try {
+        const emails = newChatEmails.value.split(',').map(e => e.trim()).filter(e => e);
+        // Add self if not included (backend might handle this, but safe to check)
+        if (!emails.includes(authStore.user.email)) emails.push(authStore.user.email);
+        
+        const newChat = await chatStore.createChat(emails, isGroupChat.value, groupName.value);
+        
+        // Auto-select the newly created chat
+        if (newChat) {
+            await onSelectChat(newChat);
+        }
+        
+        showCreateChatDialog.value = false;
+        newChatEmails.value = '';
+        groupName.value = '';
+        isGroupChat.value = false;
+    } catch (e) {
+        // Error handled in store/toast
+    } finally {
+        createchatloading.value = false;
+    }
+};
+
+const startAIChat = async () => {
+    try {
+        const chat = await chatStore.createAIChat();
+        if (chat) await onSelectChat(chat);
+    } catch (e) {
+        // Handled
+    }
+};
+
+let typingTimeout = null;
+const onTyping = () => {
+    chatStore.startTyping();
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => chatStore.stopTyping(), 2000);
+};
+
+const sendMessage = async () => {
+    if (!newMessage.value.trim()) return;
+    const content = newMessage.value;
+    newMessage.value = ''; // Optimistic clear
+    
+    try {
+        await chatStore.sendMessage(content);
+        scrollToBottom();
+    } catch (e) {
+        newMessage.value = content; // Restore on fail
+    }
+};
+
+const toggleUploadMenu = (event) => uploadMenu.value.toggle(event);
+
+const triggerFileUpload = (accept = 'image/*,video/*,.pdf,.doc,.docx') => {
+    if (fileInput.value) {
+        fileInput.value.setAttribute('accept', accept);
+        fileInput.value.click();
+    }
+};
+
+const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+        await chatStore.sendMediaMessage(file);
+        scrollToBottom();
+    } catch (e) {
+        toast.add({ severity: 'error', summary: 'Upload Failed', detail: 'Could not send file', life: 3000 });
+    }
+    event.target.value = ''; // Reset
+};
+
+const toggleRecording = async () => {
+    if (recording.value) {
+        // Stop
+        chatStore.stopAudioRecording();
+        clearInterval(recordingInterval.value);
+        recording.value = false;
+    } else {
+        // Start
+        recording.value = true;
+        await chatStore.startAudioRecording();
+        recordingInterval.value = setInterval(() => {
+            // Update duration UI if needed
+        }, 1000);
+    }
+};
+
+// Edit/Delete
+const openEditDialog = (msg) => {
+    editingMsgId.value = msg._id;
+    editedContent.value = msg.content;
+    showEditDialog.value = true;
+};
+
+const saveEditedMessage = async () => {
+    try {
+        await chatStore.editMessage(editingMsgId.value, editedContent.value);
+        showEditDialog.value = false;
+    } catch (e) {
+        // Handled
+    }
+};
+
+const confirmDeleteMessage = (msg) => {
+    confirm.require({
+        message: 'Are you sure you want to delete this message?',
+        header: 'Delete Message',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => chatStore.deleteMessage(msg._id)
+    });
+};
+
+const confirmDeleteChat = () => {
+    confirm.require({
+        message: 'Are you sure you want to delete this chat?',
+        header: 'Delete Chat',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            await chatStore.deleteChat(chatStore.selectedChat._id);
+            chatStore.selectedChat = null;
+        }
+    });
+};
+
+const confirmDeleteChatFromList = (chat) => {
+    confirm.require({
+        message: `Are you sure you want to delete "${getChatName(chat)}"?`,
+        header: 'Delete Chat',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            await chatStore.deleteChat(chat._id);
+            // Clear selection if deleted chat was selected
+            if (chatStore.selectedChat?._id === chat._id) {
+                chatStore.selectedChat = null;
+            }
+        }
+    });
+};
+
+const confirmClearChat = () => {
+    toast.add({ severity: 'info', summary: 'Info', detail: 'Clear chat not implemented yet', life: 3000 });
+};
+
+// Calls
+const startVoiceCall = () => {
+    chatStore.startVoiceCall();
+};
+
+const hangUpVoiceCall = () => {
+    chatStore.hangUpVoiceCall();
+};
+
+const acceptCall = () => {
+    if (incomingCall.value) {
+        chatStore.answerVoiceCall(incomingCall.value); // You might need to adjust store to accept the offer data
+        incomingCall.value = null;
+    }
+};
+
+const declineCall = () => {
+    incomingCall.value = null;
+    // Emit decline event if needed
+};
+
+// Lifecycle
+onMounted(() => {
+    if (!authStore.user) {
+        const stored = localStorage.getItem('user');
+        if (stored) authStore.user = JSON.parse(stored);
+    }
+    
+    chatStore.fetchUserChats();
+    
+    if (authStore.user?._id) {
+        chatStore.connectSocket(authStore.user._id);
+        
+        // Listeners
+        chatStore.socket.on('incomingVoiceCall', (data) => {
+            incomingCall.value = data;
+        });
+    }
+
+    window.addEventListener('resize', () => {
+        isMobile.value = window.innerWidth < 768;
+    });
+});
+
+onUnmounted(() => {
+    // Cleanup
+});
+
+// Watchers
+watch(() => chatStore.messages, () => scrollToBottom(), { deep: true });
+watch(() => chatStore.remoteStream, (stream) => {
+    if (stream && remoteAudio.value) {
+        remoteAudio.value.srcObject = stream;
+    }
+});
+
 </script>
 
 <style scoped>
-.flex {
-  display: flex;
+/* Custom Scrollbar for chat area */
+::-webkit-scrollbar {
+  width: 6px;
 }
-.h-screen {
-  height: 100vh;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
-.bg-gray-100 {
-  background-color: #f7fafc;
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
 }
-.progress-container {
-  margin: 10px 0;
-  padding: 10px;
-  background: #f3f3f3;
-  border-radius: 5px;
-  text-align: center;
-}
-
-.progress-bar {
-  height: 8px;
-  width: 100%;
-  background: #ddd;
-  border-radius: 4px;
-  margin-top: 5px;
-  overflow: hidden;
-}
-
-.progress {
-  height: 100%;
-  background: #4caf50;
-  transition: width 0.3s ease-in-out;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 1.0s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.recording-indicator {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 30px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.recording-content {
-  display: flex;
-  align-items: center;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  background: red;
-  border-radius: 50%;
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.cancel-btn {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 14px;
-  margin-left: 10px;
-  cursor: pointer;
-}
-
-.cancel-btn:hover {
-  color: #ff6b6b;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.record-btn {
-  padding: 10px 15px;
-  font-size: 16px;
-  background: #007aff;
-  color: white;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 </style>
