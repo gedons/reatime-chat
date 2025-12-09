@@ -218,7 +218,7 @@ onUnmounted(() => {
               </div>
               <!-- Placeholder for actual screenshot or mockup -->
               <div class="aspect-video bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center relative overflow-hidden group">
-                  <img src="../../public/chatterbox.JPG" 
+                  <img src="../assets/chatterbox.JPG" 
                        alt="App Interface" 
                        class="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105"
                   />
