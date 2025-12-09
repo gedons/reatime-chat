@@ -101,7 +101,14 @@ export const useChatStore = defineStore('chat', {
 
         // Find and return the newly created chat
         const newChat = this.chats.find(chat => chat._id === response.data.data._id);
-        return newChat || response.data.data;
+
+        // If fetchUserChats didn't pick it up yet (race condition), add it manually
+        if (!newChat) {
+          this.chats.unshift(response.data.data);
+          return response.data.data;
+        }
+
+        return newChat;
       } catch (error) {
         console.log('[createChat] Error:', error.response?.data?.message);
         this.error = error.response?.data?.message || 'Failed to create chat';
