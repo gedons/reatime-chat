@@ -111,8 +111,33 @@ export const useChatStore = defineStore('chat', {
         return newChat;
       } catch (error) {
         console.log('[createChat] Error:', error.response?.data?.message);
-        this.error = error.response?.data?.message || 'Failed to create chat';
-        toast.error(error.response?.data?.message || 'Failed to create chat');
+
+        // Handle case where chat already exists
+        if (error.response?.status === 400 && error.response?.data?.message === 'A private chat already exists between these users') {
+          // Ideally the backend should return the existing chat ID in the error response.
+          // If not, we might need to rely on the user to find it, or re-fetch.
+          // However, for better UX, let's try to find if we already have a chat with this participant.
+
+          // Assuming participantsEmails has 1 email for private chat
+          if (!isGroupChat && participantsEmails.length === 1) {
+            // We need to reload chats to be sure we have the latest
+            await this.fetchUserChats();
+
+            // Try to find the chat with this user
+            const existingChat = this.chats.find(c =>
+              !c.isGroupChat &&
+              c.participants.some(p => p.email === participantsEmails[0])
+            );
+
+            if (existingChat) {
+              return existingChat;
+            }
+          }
+          toast.info('Chat already exists');
+        } else {
+          this.error = error.response?.data?.message || 'Failed to create chat';
+          toast.error(error.response?.data?.message || 'Failed to create chat');
+        }
       } finally {
         this.loading = false;
       }
