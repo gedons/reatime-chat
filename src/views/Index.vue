@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import chatterboxImg from '@/assets/chatterbox.JPG';
+import chatterboxImg from '../assets/chatterbox.JPG';
 
 const isMenuOpen = ref(false);
 const isScrolled = ref(false);
