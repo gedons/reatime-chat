@@ -379,13 +379,15 @@ export const useChatStore = defineStore('chat', {
       this.socket.on('typing', (data) => {
         // console.log('[connectSocket] Typing event:', data);
         if (!this.selectedChat || this.selectedChat._id !== data.chatId) return;
-        this.typingUsers[data.userId] = true;
+        this.typingUsers = { ...this.typingUsers, [data.userId]: true };
       });
 
       this.socket.on('stopTyping', (data) => {
         // console.log('[connectSocket] Stop typing event:', data);
         if (!this.selectedChat || this.selectedChat._id !== data.chatId) return;
-        delete this.typingUsers[data.userId];
+        const newTyping = { ...this.typingUsers };
+        delete newTyping[data.userId];
+        this.typingUsers = newTyping;
       });
 
       this.socket.on('incomingVoiceCall', (data) => {
