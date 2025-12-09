@@ -12,4 +12,5 @@ export default defineConfig({
   define: {
     global: {},
   },
+  assetsInclude: ['**/*.JPG'],
 })
