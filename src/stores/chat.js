@@ -64,7 +64,8 @@ export const useChatStore = defineStore('chat', {
       this.setAuthHeader();
       try {
         const response = await axios.get(`${url}`);
-        this.chats = response.data.data || [];
+        // Handle both { success: true, data: [...] } and [...] formats
+        this.chats = Array.isArray(response.data) ? response.data : (response.data.data || []);
       } catch (error) {
         console.log('[fetchUserChats] Error:', error.response?.data?.message);
         this.error = error.response?.data?.message || 'Failed to fetch chats';
