@@ -575,9 +575,21 @@ export const useChatStore = defineStore('chat', {
     },
 
     async uploadMediaFile(file) {
-      console.log('[uploadMediaFile] Uploading file:', file.name || 'Audio Blob');
+      console.log('[uploadMediaFile] Uploading file:', file.name || 'Blob');
       const formData = new FormData();
-      formData.append('file', file);
+      if (file.name) {
+        formData.append('file', file);
+      } else {
+        // Determine extension from type if possible
+        let ext = 'bin';
+        if (file.type === 'audio/webm') ext = 'webm';
+        else if (file.type === 'audio/mp3') ext = 'mp3';
+        else if (file.type === 'image/jpeg') ext = 'jpg';
+        else if (file.type === 'image/png') ext = 'png';
+
+        formData.append('file', file, `upload-${Date.now()}.${ext}`);
+        console.log('[uploadMediaFile] Appended blob with generated name:', `upload-${Date.now()}.${ext}`);
+      }
 
       // Reset progress to 0 before starting
       this.mediaUploadProgress = 0;
@@ -713,17 +725,16 @@ export const useChatStore = defineStore('chat', {
         });
         console.log('[startVoiceCall] Local tracks added to the peer connection.');
 
-        // When a remote track is received, add it to remoteStream and play.
+        // When a remote track is received, add it to remoteStream.
         this.peerConnection.ontrack = (event) => {
           if (!this.remoteStream) {
             this.remoteStream = new MediaStream();
           }
           this.remoteStream.addTrack(event.track);
-          if (!this.remoteAudio) {
-            this.remoteAudio = new Audio();
-            this.remoteAudio.srcObject = this.remoteStream;
-            this.remoteAudio.play().catch(err => console.error('Error playing remote audio:', err));
-          }
+          // We do NOT create new Audio() here anymore. We rely on the Vue reference to play it.
+          // Force reactivity assignment if needed, though adding track is usually enough if the stream object ref is stable
+          // But creating a new stream ensures Vue detects the change if binding :srcObject
+          this.remoteStream = new MediaStream(this.remoteStream.getTracks());
         };
 
         // Handle ICE candidates by sending them via socket.
